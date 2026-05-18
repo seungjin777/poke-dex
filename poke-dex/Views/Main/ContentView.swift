@@ -14,15 +14,15 @@ struct ContentView: View {
         
         //탭 뷰 컨테이너
         TabView{
-            Text("도감").tabItem {
+            PokedexView().tabItem {
                 Label("도감", systemImage: "book.fill")
             }
             
-            Text("스캔").tabItem {
+            ScanView().tabItem {
                 Label("스캔", systemImage: "camera.fill")
             }
             
-            Text("히스토리").tabItem{
+            HistoryView().tabItem{
                 Label("히스토리", systemImage: "clocks.fill")
             }
         }
