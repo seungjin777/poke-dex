@@ -126,11 +126,13 @@ struct ScanView: View {
             predictionResult = result
             
             if result.result == "success" {
-                // 판별 성공 시 히스토리 저장
                 if let imageData = image.jpegData(compressionQuality: 0.8) {
+                    // 한국어 이름 가져오기
+                    let species = try await PokeAPIService.shared.fetchPokemonSpecies(id: result.number)
+                    
                     let history = ScanHistory(
                         pokemonNumber: result.number,
-                        pokemonName: "",  // 나중에 PokeAPI에서 이름 가져올 거야
+                        pokemonName: species.name,
                         confidence: result.confidence,
                         imageData: imageData
                     )
