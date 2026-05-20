@@ -27,6 +27,7 @@ struct TypeInfo: Codable {
     let name: String
 }
 
+
 // pokemon-species API 응답 구조
 struct PokemonSpeciesResponse: Codable {
     let names: [PokemonName]
@@ -47,6 +48,18 @@ struct Language: Codable {
     let name: String
 }
 
+
+// 타입 한글 매핑
+let typeTranslations: [String: String] = [
+    "normal": "노말", "fire": "불꽃", "water": "물",
+    "grass": "풀", "electric": "전기", "ice": "얼음",
+    "fighting": "격투", "poison": "독", "ground": "땅",
+    "flying": "비행", "psychic": "에스퍼", "bug": "벌레",
+    "rock": "바위", "ghost": "고스트", "dragon": "드래곤",
+    "dark": "악", "steel": "강철", "fairy": "페어리"
+]
+
+
 // PokeAPI 호출 담당 클래스
 class PokeAPIService {
     
@@ -66,7 +79,7 @@ class PokeAPIService {
             koreanName: species.name,
             description: species.description,
             imageUrl: response.sprites.front_default,
-            types: response.types.map { $0.type.name }
+            types: response.types.map { typeTranslations[$0.type.name] ?? $0.type.name }
         )
     }
     

@@ -10,9 +10,22 @@
 		2425DFA92FAEFCE9000AB283 /* poke-dex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "poke-dex.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2437F7A42FBD541D0042EE48 /* Exceptions for "poke-dex" folder in "poke-dex" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2425DFA82FAEFCE9000AB283 /* poke-dex */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2425DFAB2FAEFCE9000AB283 /* poke-dex */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2437F7A42FBD541D0042EE48 /* Exceptions for "poke-dex" folder in "poke-dex" target */,
+			);
 			path = "poke-dex";
 			sourceTree = "<group>";
 		};
@@ -251,8 +264,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 558MDN645B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "poke-dex/Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "포켓몬 촬영을 위해 카메라 접근이 필요합니다";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "포켓몬 사진 선택을 위해 앨범 접근이 필요합니다";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,8 +299,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 558MDN645B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "poke-dex/Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "포켓몬 촬영을 위해 카메라 접근이 필요합니다";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "포켓몬 사진 선택을 위해 앨범 접근이 필요합니다";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

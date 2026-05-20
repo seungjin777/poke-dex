@@ -40,6 +40,12 @@ struct PokemonDetailView: View {
                     }
                 }
                 
+                // 포켓몬 설명
+                Text(pokemon.description)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .foregroundStyle(.secondary)
+                
                 Spacer()
             }
             .padding()

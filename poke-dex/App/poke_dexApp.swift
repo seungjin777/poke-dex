@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct poke_dexApp: App {
@@ -13,5 +14,7 @@ struct poke_dexApp: App {
         WindowGroup {
             ContentView()
         }
+        // SwiftData 컨테이너 등록
+        .modelContainer(for: ScanHistory.self)
     }
 }
