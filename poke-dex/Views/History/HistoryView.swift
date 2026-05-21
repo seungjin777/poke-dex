@@ -28,14 +28,7 @@ struct HistoryView: View {
             } else {
                 List {
                     ForEach(histories) { history in
-                        NavigationLink(destination: PokemonDetailView(pokemon: Pokemon(
-                            id: history.pokemonNumber,
-                            name: "",
-                            koreanName: history.pokemonName,
-                            description: "",
-                            imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(history.pokemonNumber).png",
-                            types: []
-                        ))) {
+                        NavigationLink(destination: PokemonDetailView(pokemonId: history.pokemonNumber)) {
                             HStack {
                                 // 촬영한 이미지
                                 if let uiImage = UIImage(data: history.imageData) {

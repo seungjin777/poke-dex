@@ -99,14 +99,7 @@ struct ScanView: View {
             }
             .navigationDestination(isPresented: $isShowingResult) {
                 if let result = predictionResult {
-                    PokemonDetailView(pokemon: Pokemon(
-                        id: result.number,
-                        name: "",
-                        koreanName: "",
-                        description: "",
-                        imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(result.number).png",
-                        types: []
-                    ))
+                    PokemonDetailView(pokemonId: result.number)
                 }
             }
             .navigationDestination(isPresented: $isShowingFailure) {

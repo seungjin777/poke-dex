@@ -21,7 +21,7 @@ struct PokedexView: View {
                 ProgressView("불러오는 중...")
             } else {
                 List(pokemons) { pokemon in
-                    NavigationLink(destination: PokemonDetailView(pokemon: pokemon)) {
+                    NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.id)) {
                         HStack {
                             // AsyncImage: URL에서 이미지를 비동기로 불러옴
                             AsyncImage(url: URL(string: pokemon.imageUrl)) { image in
