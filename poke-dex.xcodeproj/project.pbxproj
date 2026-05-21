@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		249027D12FBEB57600BC7863 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 249027D02FBEB57600BC7863 /* Kingfisher */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2425DFA92FAEFCE9000AB283 /* poke-dex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "poke-dex.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				249027D12FBEB57600BC7863 /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = "poke-dex";
 			packageProductDependencies = (
+				249027D02FBEB57600BC7863 /* Kingfisher */,
 			);
 			productName = "poke-dex";
 			productReference = 2425DFA92FAEFCE9000AB283 /* poke-dex.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 2425DFA02FAEFCE9000AB283;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				249027CF2FBEB57600BC7863 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2425DFAA2FAEFCE9000AB283 /* Products */;
 			projectDirPath = "";
@@ -349,6 +358,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		249027CF2FBEB57600BC7863 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		249027D02FBEB57600BC7863 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 249027CF2FBEB57600BC7863 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2425DFA12FAEFCE9000AB283 /* Project object */;
 }

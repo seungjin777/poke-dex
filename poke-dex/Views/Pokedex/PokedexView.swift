@@ -6,60 +6,63 @@
 //
 
 import SwiftUI
+import Kingfisher
 
 struct PokedexView: View {
-    
-    // @State: 값이 바뀌면 화면을 자동으로 다시 그려줌
-    @State private var pokemons: [Pokemon] = []
-    @State private var isLoading = false
-    
     var body: some View {
         NavigationStack {
-            
-            if isLoading {
-                // 로딩 중일 때 스피너 표시
-                ProgressView("불러오는 중...")
-            } else {
-                List(pokemons) { pokemon in
-                    NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.id)) {
-                        HStack {
-                            // AsyncImage: URL에서 이미지를 비동기로 불러옴
-                            AsyncImage(url: URL(string: pokemon.imageUrl)) { image in
-                                image.resizable()
-                                    .scaledToFit()
-                                    .frame(width: 50, height: 50)
-                            } placeholder: {
-                                // 이미지 로딩 중일 때 표시
-                                ProgressView()
-                                    .frame(width: 50, height: 50)
-                            }
-                            
-                            VStack(alignment: .leading) {
-                                Text("No.\(pokemon.id)")
-                                    .foregroundStyle(.gray)
-                                    .font(.caption)
-                                Text(pokemon.koreanName)
-                            }
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(generations, id: \.id) { generation in
+                        NavigationLink(destination: GenerationPokemonListView(generation: generation)) {
+                            GenerationCardView(generation: generation)
                         }
                     }
                 }
+                .padding()
             }
-        }
-        .navigationTitle("도감")
-        // 화면이 나타날 때 API 호출
-        .task {
-            await loadPokemons()
+            .navigationTitle("도감")
         }
     }
+}
+
+struct GenerationCardView: View {
+    let generation: Generation
     
-    func loadPokemons() async {
-        isLoading = true
-        do {
-            pokemons = try await PokeAPIService.shared.fetchPokemonList()
-        } catch {
-            print("API 호출 실패: \(error)")
+    var body: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.blue.opacity(0.15))
+                .frame(height: 100)
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("\(generation.name) 지방")
+                        .font(.title2)
+                        .bold()
+                        .foregroundStyle(.primary)
+                    
+                    Text("\(generation.range.count)마리")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                
+                Spacer()
+                
+                // 세대 대표 이미지도 Kingfisher로 캐시 처리
+                KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(generation.range.lowerBound).png"))
+                    .placeholder {
+                        ProgressView()
+                            .frame(width: 80, height: 80)
+                    }
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .padding(.trailing)
+            }
         }
-        isLoading = false
+        .buttonStyle(.plain)
     }
 }
 

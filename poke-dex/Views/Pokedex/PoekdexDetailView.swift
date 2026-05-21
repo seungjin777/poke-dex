@@ -6,11 +6,14 @@
 //
 
 import SwiftUI
+import SwiftData
+import Kingfisher
 
 struct PokemonDetailView: View {
     
-    let pokemonId: Int  // 포켓몬 번호만 받아서 내부에서 API 호출
+    let pokemonId: Int
     
+    @Environment(\.modelContext) private var modelContext
     @State private var pokemon: Pokemon?
     @State private var isLoading = false
     
@@ -21,14 +24,15 @@ struct PokemonDetailView: View {
                     ProgressView("불러오는 중...")
                         .frame(maxHeight: .infinity)
                 } else if let pokemon = pokemon {
-                    AsyncImage(url: URL(string: pokemon.imageUrl)) { image in
-                        image.resizable()
-                            .scaledToFit()
-                            .frame(width: 200, height: 200)
-                    } placeholder: {
-                        ProgressView()
-                            .frame(width: 200, height: 200)
-                    }
+                    
+                    KFImage(URL(string: pokemon.imageUrl))
+                        .placeholder {
+                            ProgressView()
+                                .frame(width: 200, height: 200)
+                        }
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200, height: 200)
                     
                     Text("No.\(pokemon.id)")
                         .foregroundStyle(.gray)
@@ -62,7 +66,10 @@ struct PokemonDetailView: View {
     func loadPokemon() async {
         isLoading = true
         do {
-            pokemon = try await PokeAPIService.shared.fetchPokemon(id: pokemonId)
+            pokemon = try await PokeAPIService.shared.fetchPokemonWithCache(
+                id: pokemonId,
+                context: modelContext
+            )
         } catch {
             print("포켓몬 로드 실패: \(error)")
         }

@@ -1,13 +1,6 @@
-//
-//  PokeAPIService.swift
-//  poke-dex
-//
-//  Created by 승진 on 5/17/26.
-//
-
 import Foundation
+import SwiftData
 
-// PokeAPI 응답 데이터 구조 (JSON 파싱용)
 struct PokemonResponse: Codable {
     let id: Int
     let name: String
@@ -27,8 +20,6 @@ struct TypeInfo: Codable {
     let name: String
 }
 
-
-// pokemon-species API 응답 구조
 struct PokemonSpeciesResponse: Codable {
     let names: [PokemonName]
     let flavor_text_entries: [FlavorTextEntry]
@@ -48,8 +39,6 @@ struct Language: Codable {
     let name: String
 }
 
-
-// 타입 한글 매핑
 let typeTranslations: [String: String] = [
     "normal": "노말", "fire": "불꽃", "water": "물",
     "grass": "풀", "electric": "전기", "ice": "얼음",
@@ -59,18 +48,14 @@ let typeTranslations: [String: String] = [
     "dark": "악", "steel": "강철", "fairy": "페어리"
 ]
 
-
-// PokeAPI 호출 담당 클래스
 class PokeAPIService {
     
-    static let shared = PokeAPIService() // 앱 전체에서 하나의 인스턴스만 사용
+    static let shared = PokeAPIService()
     
     func fetchPokemon(id: Int) async throws -> Pokemon {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonResponse.self, from: data)
-        
-        // species API 추가 호출
         let species = try await fetchPokemonSpecies(id: id)
         
         return Pokemon(
@@ -83,26 +68,21 @@ class PokeAPIService {
         )
     }
     
-    // 포켓몬 목록 가져오기 (1번 ~ 151번)
-    func fetchPokemonList() async throws -> [Pokemon] {
+    func fetchPokemonList(range: ClosedRange<Int>) async throws -> [Pokemon] {
         var pokemons: [Pokemon] = []
-        for id in 1...151 {
+        for id in range {
             let pokemon = try await fetchPokemon(id: id)
             pokemons.append(pokemon)
         }
         return pokemons
     }
     
-    // 한국어 이름이랑 설명 가져오기
     func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String) {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon-species/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonSpeciesResponse.self, from: data)
         
-        // 한국어 이름 찾기
         let koreanName = response.names.first { $0.language.name == "ko" }?.name ?? "알 수 없음"
-        
-        // 한국어 설명 찾기 (줄바꿈 문자 제거)
         let koreanDescription = response.flavor_text_entries
             .first { $0.language.name == "ko" }?
             .flavor_text
@@ -110,5 +90,42 @@ class PokeAPIService {
             .replacingOccurrences(of: "\r", with: " ") ?? "설명 없음"
         
         return (koreanName, koreanDescription)
+    }
+    
+    // 캐시 확인 후 없으면 API 호출
+    func fetchPokemonWithCache(id: Int, context: ModelContext) async throws -> Pokemon {
+        let descriptor = FetchDescriptor<CachedPokemon>(
+            predicate: #Predicate { $0.id == id }
+        )
+        
+        if let cached = try? context.fetch(descriptor).first {
+            // 캐시 있으면 바로 반환
+            return cached.toPokemon()
+        }
+        
+        // 캐시 없으면 API 호출 후 저장
+        let pokemon = try await fetchPokemon(id: id)
+        
+        let cached = CachedPokemon(
+            id: pokemon.id,
+            name: pokemon.name,
+            koreanName: pokemon.koreanName,
+            pokemonDescription: pokemon.description,
+            imageUrl: pokemon.imageUrl,
+            types: pokemon.types
+        )
+        context.insert(cached)
+        
+        return pokemon
+    }
+    
+    // 세대별 목록 캐시 적용 버전
+    func fetchPokemonListWithCache(range: ClosedRange<Int>, context: ModelContext) async throws -> [Pokemon] {
+        var pokemons: [Pokemon] = []
+        for id in range {
+            let pokemon = try await fetchPokemonWithCache(id: id, context: context)
+            pokemons.append(pokemon)
+        }
+        return pokemons
     }
 }

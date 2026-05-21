@@ -14,7 +14,7 @@ struct poke_dexApp: App {
         WindowGroup {
             ContentView()
         }
-        // SwiftData 컨테이너 등록
-        .modelContainer(for: ScanHistory.self)
+        // CachedPokemon 추가
+        .modelContainer(for: [ScanHistory.self, CachedPokemon.self])
     }
 }
