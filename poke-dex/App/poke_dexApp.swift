@@ -12,7 +12,7 @@ import SwiftData
 struct poke_dexApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SplashView()
         }
         // CachedPokemon 추가
         .modelContainer(for: [ScanHistory.self, CachedPokemon.self])
