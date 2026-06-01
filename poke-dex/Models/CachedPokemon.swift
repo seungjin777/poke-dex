@@ -6,7 +6,7 @@ class CachedPokemon {
     var id: Int
     var name: String
     var koreanName: String
-    var pokemonDescription: String  // description은 SwiftData 예약어라 변경
+    var pokemonDescription: String
     var imageUrl: String
     var types: [String]
     var cachedAt: Date
@@ -21,6 +21,7 @@ class CachedPokemon {
         self.cachedAt = .now
     }
     
+    // 목록용 Pokemon 변환 (스탯/특성/진화는 빈 값)
     func toPokemon() -> Pokemon {
         Pokemon(
             id: id,
@@ -28,7 +29,12 @@ class CachedPokemon {
             koreanName: koreanName,
             description: pokemonDescription,
             imageUrl: imageUrl,
-            types: types
+            types: types,
+            height: 0,
+            weight: 0,
+            stats: [],
+            abilities: [],
+            evolutionChain: []
         )
     }
 }

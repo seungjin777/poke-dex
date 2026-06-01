@@ -23,7 +23,7 @@ struct GenerationPokemonListView: View {
                 ProgressView("불러오는 중...")
             } else {
                 List(pokemons) { pokemon in
-                    NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.id)) {
+                    NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
                         HStack {
                             KFImage(URL(string: pokemon.imageUrl))
                                 .placeholder {

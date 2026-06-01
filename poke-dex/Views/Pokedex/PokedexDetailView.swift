@@ -9,7 +9,7 @@ import SwiftUI
 import SwiftData
 import Kingfisher
 
-struct PokemonDetailView: View {
+struct PokedexDetailView: View {
     
     let pokemonId: Int
     
@@ -78,5 +78,5 @@ struct PokemonDetailView: View {
 }
 
 #Preview {
-    PokemonDetailView(pokemonId: 1)
+    PokedexDetailView(pokemonId: 1)
 }

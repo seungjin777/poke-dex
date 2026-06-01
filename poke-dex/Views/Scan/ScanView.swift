@@ -99,7 +99,7 @@ struct ScanView: View {
             }
             .navigationDestination(isPresented: $isShowingResult) {
                 if let result = predictionResult {
-                    PokemonDetailView(pokemonId: result.number)
+                    PokedexDetailView(pokemonId: result.number)
                 }
             }
             .navigationDestination(isPresented: $isShowingFailure) {
