@@ -33,6 +33,21 @@ struct PokedexDetailView: View {
                         .frame(width: 200, height: 200)
                         .padding(.top)
                     
+                    // 3D 보기 버튼
+                    NavigationLink(destination: PokemonModelView(
+                        pokemonId: pokemon.id,
+                        pokemonName: pokemon.koreanName,
+                        hasGenderDifferences: pokemon.hasGenderDifferences
+                    )) {
+                        Label("3D로 보기", systemImage: "cube")
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.bottom, 8)
+                    
                     // 도감 번호
                     Text("No.\(String(format: "%04d", pokemon.id))")
                         .foregroundStyle(.gray)

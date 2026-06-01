@@ -18,22 +18,19 @@ let generations: [Generation] = [
     Generation(id: 9, name: "팔데아", range: 906...1025)
 ]
 
-// 포켓몬 스탯
 struct PokemonStat {
     let name: String
     let value: Int
 }
 
-// 포켓몬 특성
 struct PokemonAbility {
     let name: String
     let isHidden: Bool
 }
 
-// 진화 단계
 struct EvolutionStep {
     let id: Int
-    let name: String   // 영어 이름 (이미지 URL 생성용)
+    let name: String
 }
 
 struct Pokemon: Identifiable {
@@ -43,9 +40,10 @@ struct Pokemon: Identifiable {
     let description: String
     let imageUrl: String
     let types: [String]
-    let height: Int                      // 키 (단위: 0.1m, 예: 7 = 0.7m)
-    let weight: Int                      // 몸무게 (단위: 0.1kg, 예: 69 = 6.9kg)
-    let stats: [PokemonStat]             // 스탯 목록
-    let abilities: [PokemonAbility]      // 특성 목록
-    let evolutionChain: [EvolutionStep]  // 진화 체인
+    let height: Int
+    let weight: Int
+    let stats: [PokemonStat]
+    let abilities: [PokemonAbility]
+    let evolutionChain: [EvolutionStep]
+    let hasGenderDifferences: Bool  // 성별마다 생김새가 다른지 여부
 }

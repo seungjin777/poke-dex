@@ -1,10 +1,3 @@
-//
-//  GenerationPokemonListView.swift
-//  poke-dex
-//
-//  Created by 승진 on 5/21/26.
-//
-
 import SwiftUI
 import SwiftData
 import Kingfisher
@@ -16,11 +9,18 @@ struct GenerationPokemonListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var pokemons: [Pokemon] = []
     @State private var isLoading = false
+    @State private var loadedCount = 0
     
     var body: some View {
         Group {
-            if isLoading {
-                ProgressView("불러오는 중...")
+            if pokemons.isEmpty && isLoading {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("첫 포켓몬 불러오는 중...")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                }
             } else {
                 List(pokemons) { pokemon in
                     NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
@@ -40,6 +40,18 @@ struct GenerationPokemonListView: View {
                                     .font(.caption)
                                 Text(pokemon.koreanName)
                             }
+                            
+                            Spacer()
+                            
+                            if isLoading && pokemon.id == pokemons.last?.id {
+                                HStack(spacing: 4) {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("\(loadedCount)/\(generation.range.count)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }
@@ -52,14 +64,22 @@ struct GenerationPokemonListView: View {
     }
     
     func loadPokemons() async {
+        guard pokemons.isEmpty else { return }
         isLoading = true
-        do {
-            pokemons = try await PokeAPIService.shared.fetchPokemonListWithCache(
-                range: generation.range,
-                context: modelContext
-            )
-        } catch {
-            print("포켓몬 목록 로드 실패: \(error)")
+        
+        for id in generation.range {
+            do {
+                let pokemon = try await PokeAPIService.shared.fetchPokemonWithCache(
+                    id: id,
+                    context: modelContext
+                )
+                await MainActor.run {
+                    pokemons.append(pokemon)
+                    loadedCount += 1
+                }
+            } catch {
+                print("포켓몬 \(id) 로드 실패: \(error)")
+            }
         }
         isLoading = false
     }

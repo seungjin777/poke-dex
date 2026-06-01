@@ -21,7 +21,6 @@ class CachedPokemon {
         self.cachedAt = .now
     }
     
-    // 목록용 Pokemon 변환 (스탯/특성/진화는 빈 값)
     func toPokemon() -> Pokemon {
         Pokemon(
             id: id,
@@ -34,7 +33,8 @@ class CachedPokemon {
             weight: 0,
             stats: [],
             abilities: [],
-            evolutionChain: []
+            evolutionChain: [],
+            hasGenderDifferences: false
         )
     }
 }

@@ -59,6 +59,7 @@ struct PokemonSpeciesResponse: Codable {
     let names: [PokemonName]
     let flavor_text_entries: [FlavorTextEntry]
     let evolution_chain: EvolutionChainUrl
+    let has_gender_differences: Bool  // 추가
 }
 
 struct EvolutionChainUrl: Codable {
@@ -134,7 +135,6 @@ class PokeAPIService {
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonResponse.self, from: data)
         
-        // species, 진화체, 특성 한글 이름 동시 조회
         let species = try await fetchPokemonSpecies(id: id)
         let evolutionChain = try await fetchEvolutionChain(url: species.evolutionChainUrl)
         let abilities = try await fetchAbilities(slots: response.abilities)
@@ -155,7 +155,8 @@ class PokeAPIService {
                 )
             },
             abilities: abilities,
-            evolutionChain: evolutionChain
+            evolutionChain: evolutionChain,
+            hasGenderDifferences: species.hasGenderDifferences  // 추가
         )
     }
     
@@ -170,7 +171,7 @@ class PokeAPIService {
     }
     
     // species 조회 (한글 이름, 설명, 진화체인 URL)
-    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String) {
+    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool) {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon-species/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonSpeciesResponse.self, from: data)
@@ -188,7 +189,7 @@ class PokeAPIService {
             .replacingOccurrences(of: "\r", with: " ")
             ?? "설명 없음"
         
-        return (koreanName, koreanDescription, response.evolution_chain.url)
+        return (koreanName, koreanDescription, response.evolution_chain.url, response.has_gender_differences)
     }
     
     // 진화 체인 조회
