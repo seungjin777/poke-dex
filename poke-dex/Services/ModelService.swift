@@ -11,7 +11,7 @@ class ModelService {
     
     static let shared = ModelService()
     
-    private let baseURL = "http://10.30.5.195:8000"
+    private let baseURL = "http://192.168.45.205:8000" 
     
     private func localURL(for pokemonId: Int, gender: PokemonGender = .none) -> URL {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
