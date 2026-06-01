@@ -28,7 +28,7 @@ struct HistoryView: View {
             } else {
                 List {
                     ForEach(histories) { history in
-                        NavigationLink(destination: PokedexDetailView(pokemonId: history.pokemonNumber)) {
+                        NavigationLink(destination: HistoryScanDetailView(history: history)) {
                             HStack {
                                 // 촬영한 이미지
                                 if let uiImage = UIImage(data: history.imageData) {
