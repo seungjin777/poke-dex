@@ -51,7 +51,7 @@ struct GenerationCardView: View {
                 Spacer()
                 
                 // 세대 대표 이미지도 Kingfisher로 캐시 처리
-                KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(generation.range.lowerBound).png"))
+                KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(generation.range.lowerBound).png"))
                     .placeholder {
                         ProgressView()
                             .frame(width: 80, height: 80)

@@ -9,6 +9,18 @@ struct PokemonResponse: Codable {
 }
 
 struct Sprites: Codable {
+    let other: OtherSprites
+}
+
+struct OtherSprites: Codable {
+    let official_artwork: OfficialArtwork
+    
+    enum CodingKeys: String, CodingKey {
+        case official_artwork = "official-artwork"
+    }
+}
+
+struct OfficialArtwork: Codable {
     let front_default: String
 }
 
@@ -63,7 +75,7 @@ class PokeAPIService {
             name: response.name,
             koreanName: species.name,
             description: species.description,
-            imageUrl: response.sprites.front_default,
+            imageUrl: response.sprites.other.official_artwork.front_default,
             types: response.types.map { typeTranslations[$0.type.name] ?? $0.type.name }
         )
     }
@@ -87,7 +99,13 @@ class PokeAPIService {
             .first { $0.language.name == "ko" }?
             .flavor_text
             .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\r", with: " ") ?? "설명 없음"
+            .replacingOccurrences(of: "\r", with: " ")
+            ?? response.flavor_text_entries
+            .first { $0.language.name == "en" }?
+            .flavor_text
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            ?? "설명 없음"
         
         return (koreanName, koreanDescription)
     }
