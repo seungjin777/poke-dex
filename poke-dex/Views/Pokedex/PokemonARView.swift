@@ -1,31 +1,37 @@
 import SwiftUI
+import SceneKit
 import RealityKit
 import ARKit
 
+// SceneKit 기반 3D 뷰어 (회전/확대/이동 내장)
 struct Pokemon3DView: UIViewRepresentable {
     
     let modelURL: URL
     
-    func makeUIView(context: Context) -> ARView {
-        let arView = ARView(frame: .zero)
-        arView.environment.background = .color(.systemBackground)
+    func makeUIView(context: Context) -> SCNView {
+        let scnView = SCNView(frame: .zero)
         
-        do {
-            let entity = try ModelEntity.load(contentsOf: modelURL)
-            entity.scale = SIMD3<Float>(0.3, 0.3, 0.3)
+        // 기본 제스처 활성화 (회전, 확대, 이동)
+        scnView.allowsCameraControl = true
+        scnView.autoenablesDefaultLighting = true  // 자동 조명 (텍스처 깨짐 해결)
+        scnView.backgroundColor = UIColor.systemBackground
+        scnView.antialiasingMode = .multisampling4X
+        
+        // usdzs 로드
+        if let scene = try? SCNScene(url: modelURL) {
+            scnView.scene = scene
             
-            let anchor = AnchorEntity(world: .zero)
-            anchor.addChild(entity)
-            arView.scene.addAnchor(anchor)
-            arView.cameraMode = .nonAR
-        } catch {
-            print("3D 모델 로드 실패: \(error)")
+            // 카메라 설정
+            let cameraNode = SCNNode()
+            cameraNode.camera = SCNCamera()
+            cameraNode.position = SCNVector3(0, 0, 3)
+            scene.rootNode.addChildNode(cameraNode)
         }
         
-        return arView
+        return scnView
     }
     
-    func updateUIView(_ uiView: ARView, context: Context) {}
+    func updateUIView(_ uiView: SCNView, context: Context) {}
 }
 
 struct PokemonARViewContainer: UIViewRepresentable {
@@ -37,6 +43,12 @@ struct PokemonARViewContainer: UIViewRepresentable {
         
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal]
+        
+        // 환경 텍스처 활성화 (텍스처 깨짐 해결)
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+            config.environmentTexturing = .automatic
+        }
+        
         arView.session.run(config)
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
