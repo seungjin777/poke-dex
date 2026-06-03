@@ -43,12 +43,7 @@ struct PokemonARViewContainer: UIViewRepresentable {
         
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal]
-        
-        // 환경 텍스처 활성화 (텍스처 깨짐 해결)
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
-            config.environmentTexturing = .automatic
-        }
-        
+        config.environmentTexturing = .automatic  // 추가
         arView.session.run(config)
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
@@ -76,15 +71,24 @@ struct PokemonARViewContainer: UIViewRepresentable {
             let results = arView.raycast(from: location, allowing: .estimatedPlane, alignment: .horizontal)
             
             if let result = results.first {
-                do {
-                    let entity = try ModelEntity.load(contentsOf: modelURL)
-                    entity.scale = SIMD3<Float>(0.3, 0.3, 0.3)
-                    
-                    let anchor = AnchorEntity(raycastResult: result)
-                    anchor.addChild(entity)
-                    arView.scene.addAnchor(anchor)
-                } catch {
-                    print("AR 모델 배치 실패: \(error)")
+                Task {
+                    do {
+                        // ModelEntity.load 대신 loadAsync 사용
+                        let entity = try await ModelEntity(contentsOf: modelURL)
+                        entity.scale = SIMD3<Float>(0.3, 0.3, 0.3)
+                        
+                        // 텍스처 강제 적용
+                        entity.model?.materials = entity.model?.materials ?? []
+                        
+                        let anchor = AnchorEntity(raycastResult: result)
+                        anchor.addChild(entity)
+                        
+                        await MainActor.run {
+                            arView.scene.addAnchor(anchor)
+                        }
+                    } catch {
+                        print("AR 모델 배치 실패: \(error)")
+                    }
                 }
             }
         }

@@ -49,14 +49,35 @@ class ModelService {
         }
         
         let url = URL(string: "\(baseURL)/pokemon/model/\(fileName)")!
-        let (data, _) = try await URLSession.shared.data(from: url)
         
-        let local = localURL(for: pokemonId, gender: gender)
-        let modelsDir = local.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: modelsDir, withIntermediateDirectories: true)
-        try data.write(to: local)
-        
-        return local
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            // 404면 성별 모델 없는 거니까 기본 모델로 폴백
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 404 {
+                if gender != .none {
+                    print("성별 모델 없음, 기본 모델로 폴백: \(pokemonId)")
+                    return try await downloadModel(pokemonId: pokemonId, gender: .none)
+                } else {
+                    throw URLError(.fileDoesNotExist)
+                }
+            }
+            
+            let local = localURL(for: pokemonId, gender: gender)
+            let modelsDir = local.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: modelsDir, withIntermediateDirectories: true)
+            try data.write(to: local)
+            
+            return local
+            
+        } catch {
+            // 네트워크 에러일 때도 성별 모델이면 기본 모델로 폴백 시도
+            if gender != .none {
+                print("성별 모델 로드 실패, 기본 모델로 폴백: \(pokemonId)")
+                return try await downloadModel(pokemonId: pokemonId, gender: .none)
+            }
+            throw error
+        }
     }
     
     func hasLocalModel(for pokemonId: Int, gender: PokemonGender = .none) -> Bool {
