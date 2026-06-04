@@ -10,6 +10,16 @@ struct GenerationPokemonListView: View {
     @State private var pokemons: [Pokemon] = []
     @State private var isLoading = false
     @State private var loadedCount = 0
+    @State private var searchText = ""
+    
+    // 검색어 필터링
+    var filteredPokemons: [Pokemon] {
+        guard !searchText.isEmpty else { return pokemons }
+        return pokemons.filter {
+            $0.koreanName.contains(searchText) ||
+            String($0.id).contains(searchText)
+        }
+    }
     
     var body: some View {
         Group {
@@ -22,7 +32,7 @@ struct GenerationPokemonListView: View {
                         .font(.subheadline)
                 }
             } else {
-                List(pokemons) { pokemon in
+                List(filteredPokemons) { pokemon in
                     NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
                         HStack {
                             KFImage(URL(string: pokemon.imageUrl))
@@ -43,6 +53,7 @@ struct GenerationPokemonListView: View {
                             
                             Spacer()
                             
+                            // 로딩 중 진행 표시 (마지막 포켓몬에만)
                             if isLoading && pokemon.id == pokemons.last?.id {
                                 HStack(spacing: 4) {
                                     ProgressView()
@@ -55,6 +66,19 @@ struct GenerationPokemonListView: View {
                         }
                     }
                 }
+                // 검색 결과 없을 때
+                .overlay {
+                    if !searchText.isEmpty && filteredPokemons.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.gray)
+                            Text("'\(searchText)' 검색 결과 없음")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .searchable(text: $searchText, prompt: "\(generation.name) 지방 포켓몬 검색")
             }
         }
         .navigationTitle("\(generation.name) 지방")
@@ -83,9 +107,4 @@ struct GenerationPokemonListView: View {
         }
         isLoading = false
     }
-}
-
-#Preview {
-    GenerationPokemonListView(generation: generations[0])
-        .modelContainer(for: CachedPokemon.self, inMemory: true)
 }
