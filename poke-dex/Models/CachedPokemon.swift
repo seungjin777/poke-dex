@@ -34,7 +34,9 @@ class CachedPokemon {
             stats: [],
             abilities: [],
             evolutionChain: nil,
-            hasGenderDifferences: false
+            hasGenderDifferences: false,
+            genderRate: -2,  // 캐시엔 없으므로 미확인 상태
+            genus: ""
         )
     }
 }

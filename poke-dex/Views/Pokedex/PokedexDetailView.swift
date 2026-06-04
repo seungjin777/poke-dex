@@ -6,6 +6,7 @@ import AVFoundation
 struct PokedexDetailView: View {
     
     let pokemonId: Int
+    var autoReadDescription: Bool = false  // 추가 (스캔 후 자동 읽기)
     
     @Environment(\.modelContext) private var modelContext
     @Query private var allHistories: [ScanHistory]
@@ -13,6 +14,9 @@ struct PokedexDetailView: View {
     @State private var pokemon: Pokemon?
     @State private var isLoading = false
     @State private var audioPlayer: AVPlayer?
+    
+    // TTS
+    let synthesizer = AVSpeechSynthesizer()
     
     var filteredHistories: [ScanHistory] {
         allHistories.filter { $0.pokemonNumber == pokemonId }
@@ -79,7 +83,7 @@ struct PokedexDetailView: View {
                     }
                     .padding(.vertical, 8)
                     
-                    // 키 / 몸무게
+                    // 키 / 몸무게 / 성별
                     HStack(spacing: 32) {
                         VStack {
                             Text(String(format: "%.1fm", Double(pokemon.height) / 10))
@@ -95,14 +99,32 @@ struct PokedexDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        
+                        // 성별 표시
+                        VStack {
+                            genderView(genderRate: pokemon.genderRate)
+                            Text("성별")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .padding(.vertical, 8)
                     
-                    // 설명
-                    Text(pokemon.description)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                        .foregroundStyle(.secondary)
+                    // 설명 + 음성 버튼
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(pokemon.description)
+                            .multilineTextAlignment(.leading)
+                            .foregroundStyle(.secondary)
+                        
+                        Button {
+                            readDescription(pokemon: pokemon)
+                        } label: {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .foregroundStyle(.blue)
+                                .font(.title3)
+                        }
+                    }
+                    .padding()
                     
                     Divider()
                     
@@ -192,6 +214,8 @@ struct PokedexDetailView: View {
         .navigationTitle(pokemon?.koreanName ?? "")
         .task {
             await loadPokemon()
+        }.onDisappear {
+            synthesizer.stopSpeaking(at: .immediate)
         }
     }
     
@@ -209,6 +233,37 @@ struct PokedexDetailView: View {
         }
     }
     
+    // 성별 아이콘 생성
+    @ViewBuilder
+    func genderView(genderRate: Int) -> some View {
+        switch genderRate {
+        case -1:
+            // 무성
+            Image(systemName: "minus.circle")
+                .foregroundStyle(.gray)
+                .font(.headline)
+        case 0:
+            // 수컷만
+            Text("♂")
+                .foregroundStyle(.blue)
+                .font(.headline)
+        case 8:
+            // 암컷만
+            Text("♀")
+                .foregroundStyle(.pink)
+                .font(.headline)
+        default:
+            // 암수 모두
+            HStack(spacing: 2) {
+                Text("♂")
+                    .foregroundStyle(.blue)
+                Text("♀")
+                    .foregroundStyle(.pink)
+            }
+            .font(.headline)
+        }
+    }
+    
     func statColor(value: Int) -> Color {
         switch value {
         case 0..<50: return .red
@@ -222,10 +277,28 @@ struct PokedexDetailView: View {
         isLoading = true
         do {
             pokemon = try await PokeAPIService.shared.fetchPokemon(id: pokemonId)
+            
+            // 스캔 후 진입한 경우 TTS 자동 실행
+            if autoReadDescription, let pokemon = pokemon {
+                readDescription(pokemon: pokemon)
+            }
         } catch {
             print("포켓몬 로드 실패: \(error)")
         }
         isLoading = false
+    }
+    
+    // TTS로 도감 설명 읽기
+    func readDescription(pokemon: Pokemon) {
+        // 예시: "피카츄, 쥐포켓몬. 꼬리를 세우고..."
+        let text = "\(pokemon.koreanName), \(pokemon.genus). \(pokemon.description)"
+        
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
+        utterance.rate = 0.5
+        utterance.pitchMultiplier = 1.0
+        
+        synthesizer.speak(utterance)
     }
 }
 

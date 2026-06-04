@@ -1,9 +1,9 @@
 import SwiftUI
 import SwiftData
+import AVFoundation
 
 struct ScanView: View {
     
-    // SwiftData 컨텍스트 (데이터 저장/삭제 담당)
     @Environment(\.modelContext) private var modelContext
     
     @State private var selectedImage: UIImage?
@@ -14,30 +14,65 @@ struct ScanView: View {
     @State private var isShowingResult = false
     @State private var isShowingFailure = false
     
+    // 스캔바 애니메이션
+    @State private var isScanning = false
+    @State private var scanBarOffset: CGFloat = 0
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
                 
-                if let image = selectedImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 300)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(maxHeight: 300)
-                        .overlay {
-                            VStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 50))
-                                    .foregroundStyle(.gray)
-                                Text("사진을 선택하거나 촬영해주세요")
-                                    .foregroundStyle(.gray)
+                // 이미지 영역
+                ZStack {
+                    if let image = selectedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 300)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        
+                        // 스캔바 오버레이
+                        if isScanning {
+                            GeometryReader { geo in
+                                // 스캔바
+                                Rectangle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                .blue.opacity(0),
+                                                .blue.opacity(0.8),
+                                                .cyan.opacity(0.9),
+                                                .blue.opacity(0.8),
+                                                .blue.opacity(0)
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .frame(height: 6)
+                                    .shadow(color: .cyan, radius: 8)
+                                    .offset(y: scanBarOffset)
                             }
+                            .frame(maxHeight: 300)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
+                        
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(maxHeight: 300)
+                            .overlay {
+                                VStack {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 50))
+                                        .foregroundStyle(.gray)
+                                    Text("사진을 선택하거나 촬영해주세요")
+                                        .foregroundStyle(.gray)
+                                }
+                            }
+                    }
                 }
+                .frame(maxHeight: 300)
                 
                 HStack(spacing: 16) {
                     Button {
@@ -70,11 +105,16 @@ struct ScanView: View {
                     }
                 } label: {
                     if isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.gray)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.white)
+                            Text("스캔 중...")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.gray)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         Text("판별하기")
                             .frame(maxWidth: .infinity)
@@ -99,7 +139,7 @@ struct ScanView: View {
             }
             .navigationDestination(isPresented: $isShowingResult) {
                 if let result = predictionResult {
-                    PokedexDetailView(pokemonId: result.number)
+                    PokedexDetailView(pokemonId: result.number, autoReadDescription: true)
                 }
             }
             .navigationDestination(isPresented: $isShowingFailure) {
@@ -107,22 +147,50 @@ struct ScanView: View {
                     isShowingFailure = false
                     selectedImage = nil
                 })
+            }.onDisappear {
+                resetScanState()
             }
         }
+    }
+    
+    // 스캔바 애니메이션 시작
+    func startScanAnimation() {
+        isScanning = true
+        scanBarOffset = 0
+        withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: true)) {
+            scanBarOffset = 290  // 이미지 높이에 맞게
+        }
+    }
+    
+    // 스캔바 애니메이션 중지
+    func stopScanAnimation() {
+        isScanning = false
+        scanBarOffset = 0
+    }
+    
+    func resetScanState() {
+        selectedImage = nil
+        predictionResult = nil
+        isShowingResult = false
+        isShowingFailure = false
+        isLoading = false
+        stopScanAnimation()
     }
     
     func predictPokemon() async {
         guard let image = selectedImage else { return }
         isLoading = true
+        startScanAnimation()
+        
         do {
             let result = try await PokeDexAPIService.shared.predictPokemon(image: image)
             predictionResult = result
             
+            stopScanAnimation()
+            
             if result.result == "success" {
                 if let imageData = image.jpegData(compressionQuality: 0.8) {
-                    // 한국어 이름 가져오기
                     let species = try await PokeAPIService.shared.fetchPokemonSpecies(id: result.number)
-                    
                     let history = ScanHistory(
                         pokemonNumber: result.number,
                         pokemonName: species.name,
@@ -136,6 +204,7 @@ struct ScanView: View {
                 isShowingFailure = true
             }
         } catch {
+            stopScanAnimation()
             print("판별 실패: \(error)")
         }
         isLoading = false

@@ -58,6 +58,8 @@ struct PokemonSpeciesResponse: Codable {
     let flavor_text_entries: [FlavorTextEntry]
     let evolution_chain: EvolutionChainUrl
     let has_gender_differences: Bool
+    let gender_rate: Int
+    let genera: [Genus]
 }
 
 struct EvolutionChainUrl: Codable {
@@ -98,6 +100,11 @@ struct AbilityResponse: Codable {
 
 struct AbilityName: Codable {
     let name: String
+    let language: Language
+}
+
+struct Genus: Codable {
+    let genus: String
     let language: Language
 }
 
@@ -142,7 +149,9 @@ class PokeAPIService {
             },
             abilities: abilities,
             evolutionChain: evolutionChain,
-            hasGenderDifferences: species.hasGenderDifferences
+            hasGenderDifferences: species.hasGenderDifferences,
+            genderRate: species.genderRate,
+            genus: species.genus
         )
     }
     
@@ -155,7 +164,7 @@ class PokeAPIService {
         return pokemons
     }
     
-    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool) {
+    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool, genderRate: Int, genus: String ) {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon-species/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonSpeciesResponse.self, from: data)
@@ -172,8 +181,9 @@ class PokeAPIService {
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
             ?? "설명 없음"
+        let koreanGenus = response.genera.first { $0.language.name == "ko" }?.genus ?? ""
         
-        return (koreanName, koreanDescription, response.evolution_chain.url, response.has_gender_differences)
+        return (koreanName, koreanDescription, response.evolution_chain.url, response.has_gender_differences, response.gender_rate, koreanGenus)
     }
     
     // 진화 체인 조회 - 트리 구조로 파싱

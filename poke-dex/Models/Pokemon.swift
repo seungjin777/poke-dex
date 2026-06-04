@@ -62,4 +62,6 @@ struct Pokemon: Identifiable {
     let abilities: [PokemonAbility]
     let evolutionChain: EvolutionNode?  // 트리 구조로 변경
     let hasGenderDifferences: Bool
+    let genderRate: Int  // -1: 무성, 0: 수컷만, 8: 암컷만, 나머지: 암수 모두
+    let genus: String
 }
