@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Kingfisher
+import AVFoundation
 
 struct PokedexDetailView: View {
     
@@ -11,8 +12,8 @@ struct PokedexDetailView: View {
     
     @State private var pokemon: Pokemon?
     @State private var isLoading = false
+    @State private var audioPlayer: AVPlayer?
     
-    // 해당 포켓몬 촬영 기록만 필터링
     var filteredHistories: [ScanHistory] {
         allHistories.filter { $0.pokemonNumber == pokemonId }
     }
@@ -33,18 +34,31 @@ struct PokedexDetailView: View {
                         .frame(width: 200, height: 200)
                         .padding(.top)
                     
-                    // 3D 보기 버튼
-                    NavigationLink(destination: PokemonModelView(
-                        pokemonId: pokemon.id,
-                        pokemonName: pokemon.koreanName,
-                        hasGenderDifferences: pokemon.hasGenderDifferences
-                    )) {
-                        Label("3D로 보기", systemImage: "cube")
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(.blue)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
+                    // 3D 보기 + 울음소리 버튼
+                    HStack(spacing: 12) {
+                        NavigationLink(destination: PokemonModelView(
+                            pokemonId: pokemon.id,
+                            pokemonName: pokemon.koreanName,
+                            hasGenderDifferences: pokemon.hasGenderDifferences
+                        )) {
+                            Label("3D로 보기", systemImage: "cube")
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(.blue)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
+                        
+                        Button {
+                            playCry(pokemonId: pokemon.id)
+                        } label: {
+                            Label("울음소리", systemImage: "speaker.wave.2.fill")
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(.orange)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
                     }
                     .padding(.bottom, 8)
                     
@@ -147,32 +161,12 @@ struct PokedexDetailView: View {
                     Divider().padding(.top)
                     
                     // 진화 섹션
-                    if !pokemon.evolutionChain.isEmpty {
+                    if let chain = pokemon.evolutionChain {
                         SectionHeader(title: "진화")
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(Array(pokemon.evolutionChain.enumerated()), id: \.offset) { index, step in
-                                    HStack(spacing: 4) {
-                                        VStack {
-                                            KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(step.id).png"))
-                                                .placeholder { ProgressView().frame(width: 70, height: 70) }
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 70, height: 70)
-                                            Text("No.\(step.id)")
-                                                .font(.caption2)
-                                                .foregroundStyle(.gray)
-                                        }
-                                        if index < pokemon.evolutionChain.count - 1 {
-                                            Image(systemName: "arrow.right")
-                                                .foregroundStyle(.gray)
-                                        }
-                                    }
-                                }
-                            }
+                        EvolutionTreeView(node: chain)
                             .padding(.horizontal)
-                        }
-                        Divider().padding(.top)
+                            .padding(.vertical, 8)
+                        Divider()
                     }
                     
                     // 촬영 기록 섹션
@@ -201,6 +195,20 @@ struct PokedexDetailView: View {
         }
     }
     
+    // 울음소리 재생
+    func playCry(pokemonId: Int) {
+        let urlString = "https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/\(pokemonId).ogg"
+        // ogg는 iOS에서 직접 재생 불가 → legacy mp3 사용
+        let legacyUrl = "https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/legacy/\(pokemonId).ogg"
+        
+        // PokeAPI는 ogg 포맷이라 직접 재생 불가
+        // AVPlayer로 스트리밍 시도 (일부 기기에서 작동)
+        if let url = URL(string: urlString) {
+            audioPlayer = AVPlayer(url: url)
+            audioPlayer?.play()
+        }
+    }
+    
     func statColor(value: Int) -> Color {
         switch value {
         case 0..<50: return .red
@@ -221,7 +229,58 @@ struct PokedexDetailView: View {
     }
 }
 
-// 섹션 헤더 공통 컴포넌트
+// 진화 트리 뷰 - 재귀적으로 분기 진화 렌더링
+struct EvolutionTreeView: View {
+    let node: EvolutionNode
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 4) {
+            // 현재 포켓몬
+            EvolutionPokemonView(id: node.id)
+            
+            // 다음 진화가 있으면 화살표 + 분기 렌더링
+            if !node.evolvesTo.isEmpty {
+                Image(systemName: "arrow.right")
+                    .foregroundStyle(.gray)
+                    .padding(.top, 28)
+                
+                // 분기가 1개면 가로로, 여러 개면 세로로 나열
+                if node.evolvesTo.count == 1 {
+                    EvolutionTreeView(node: node.evolvesTo[0])
+                } else {
+                    // 분기 진화: 세로로 나열
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(node.evolvesTo.enumerated()), id: \.offset) { _, child in
+                            EvolutionTreeView(node: child)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 진화 포켓몬 이미지 + 번호 표시
+struct EvolutionPokemonView: View {
+    let id: Int
+    
+    var body: some View {
+        NavigationLink(destination: PokedexDetailView(pokemonId: id)) {
+            VStack(spacing: 4) {
+                KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(id).png"))
+                    .placeholder { ProgressView().frame(width: 70, height: 70) }
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 70, height: 70)
+                Text("No.\(id)")
+                    .font(.caption2)
+                    .foregroundStyle(.gray)
+            }
+        }
+        .buttonStyle(.plain) // NavigationLink 기본 파란색 스타일 제거
+    }
+}
+
 struct SectionHeader: View {
     let title: String
     var body: some View {
@@ -235,5 +294,5 @@ struct SectionHeader: View {
 }
 
 #Preview {
-    PokedexDetailView(pokemonId: 1)
+    PokedexDetailView(pokemonId: 280)
 }

@@ -1,7 +1,6 @@
 import Foundation
 import SwiftData
 
-// 기본 포켓몬 API 응답
 struct PokemonResponse: Codable {
     let id: Int
     let name: String
@@ -54,12 +53,11 @@ struct AbilityInfo: Codable {
     let name: String
 }
 
-// species API 응답
 struct PokemonSpeciesResponse: Codable {
     let names: [PokemonName]
     let flavor_text_entries: [FlavorTextEntry]
     let evolution_chain: EvolutionChainUrl
-    let has_gender_differences: Bool  // 추가
+    let has_gender_differences: Bool
 }
 
 struct EvolutionChainUrl: Codable {
@@ -80,7 +78,6 @@ struct Language: Codable {
     let name: String
 }
 
-// 진화 체인 API 응답
 struct EvolutionChainResponse: Codable {
     let chain: ChainLink
 }
@@ -95,7 +92,6 @@ struct SpeciesInfo: Codable {
     let url: String
 }
 
-// 특성 한글 이름 API 응답
 struct AbilityResponse: Codable {
     let names: [AbilityName]
 }
@@ -105,7 +101,6 @@ struct AbilityName: Codable {
     let language: Language
 }
 
-// 타입 한글 매핑
 let typeTranslations: [String: String] = [
     "normal": "노말", "fire": "불꽃", "water": "물",
     "grass": "풀", "electric": "전기", "ice": "얼음",
@@ -115,21 +110,15 @@ let typeTranslations: [String: String] = [
     "dark": "악", "steel": "강철", "fairy": "페어리"
 ]
 
-// 스탯 한글 매핑
 let statTranslations: [String: String] = [
-    "hp": "HP",
-    "attack": "공격",
-    "defense": "방어",
-    "special-attack": "특수공격",
-    "special-defense": "특수방어",
-    "speed": "스피드"
+    "hp": "HP", "attack": "공격", "defense": "방어",
+    "special-attack": "특수공격", "special-defense": "특수방어", "speed": "스피드"
 ]
 
 class PokeAPIService {
     
     static let shared = PokeAPIService()
     
-    // 포켓몬 전체 정보 조회
     func fetchPokemon(id: Int) async throws -> Pokemon {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
@@ -149,18 +138,14 @@ class PokeAPIService {
             height: response.height,
             weight: response.weight,
             stats: response.stats.map {
-                PokemonStat(
-                    name: statTranslations[$0.stat.name] ?? $0.stat.name,
-                    value: $0.base_stat
-                )
+                PokemonStat(name: statTranslations[$0.stat.name] ?? $0.stat.name, value: $0.base_stat)
             },
             abilities: abilities,
             evolutionChain: evolutionChain,
-            hasGenderDifferences: species.hasGenderDifferences  // 추가
+            hasGenderDifferences: species.hasGenderDifferences
         )
     }
     
-    // 세대별 목록 조회
     func fetchPokemonList(range: ClosedRange<Int>) async throws -> [Pokemon] {
         var pokemons: [Pokemon] = []
         for id in range {
@@ -170,7 +155,6 @@ class PokeAPIService {
         return pokemons
     }
     
-    // species 조회 (한글 이름, 설명, 진화체인 URL)
     func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool) {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon-species/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
@@ -192,29 +176,22 @@ class PokeAPIService {
         return (koreanName, koreanDescription, response.evolution_chain.url, response.has_gender_differences)
     }
     
-    // 진화 체인 조회
-    func fetchEvolutionChain(url: String) async throws -> [EvolutionStep] {
+    // 진화 체인 조회 - 트리 구조로 파싱
+    func fetchEvolutionChain(url: String) async throws -> EvolutionNode? {
         let (data, _) = try await URLSession.shared.data(from: URL(string: url)!)
         let response = try JSONDecoder().decode(EvolutionChainResponse.self, from: data)
         
-        var steps: [EvolutionStep] = []
-        
-        // 재귀적으로 진화 체인 파싱
-        func parseChain(_ link: ChainLink) {
-            // species URL에서 포켓몬 번호 추출 (예: .../pokemon-species/1/ → 1)
+        // ChainLink를 재귀적으로 EvolutionNode 트리로 변환
+        func parseNode(_ link: ChainLink) -> EvolutionNode {
             let id = Int(link.species.url.split(separator: "/").last ?? "0") ?? 0
-            steps.append(EvolutionStep(id: id, name: link.species.name))
-            // 다음 진화가 있으면 재귀 호출
-            if let next = link.evolves_to.first {
-                parseChain(next)
-            }
+            // evolves_to 배열 전체를 재귀 파싱 (분기 진화 지원)
+            let children = link.evolves_to.map { parseNode($0) }
+            return .pokemon(id: id, name: link.species.name, evolvesTo: children)
         }
         
-        parseChain(response.chain)
-        return steps
+        return parseNode(response.chain)
     }
     
-    // 특성 한글 이름 조회
     func fetchAbilities(slots: [AbilitySlot]) async throws -> [PokemonAbility] {
         var abilities: [PokemonAbility] = []
         for slot in slots {
@@ -227,7 +204,6 @@ class PokeAPIService {
         return abilities
     }
     
-    // 캐시 확인 후 없으면 API 호출 (목록용 - 기본 정보만)
     func fetchPokemonWithCache(id: Int, context: ModelContext) async throws -> Pokemon {
         let descriptor = FetchDescriptor<CachedPokemon>(
             predicate: #Predicate { $0.id == id }
@@ -252,7 +228,6 @@ class PokeAPIService {
         return pokemon
     }
     
-    // 세대별 목록 캐시 적용 버전
     func fetchPokemonListWithCache(range: ClosedRange<Int>, context: ModelContext) async throws -> [Pokemon] {
         var pokemons: [Pokemon] = []
         for id in range {

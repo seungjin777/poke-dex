@@ -28,9 +28,25 @@ struct PokemonAbility {
     let isHidden: Bool
 }
 
-struct EvolutionStep {
-    let id: Int
-    let name: String
+// 진화 트리 노드 (재귀 구조)
+// indirect: 자기 자신을 참조하는 재귀 구조체에 필요
+indirect enum EvolutionNode {
+    case pokemon(id: Int, name: String, evolvesTo: [EvolutionNode])
+    
+    var id: Int {
+        if case .pokemon(let id, _, _) = self { return id }
+        return 0
+    }
+    
+    var name: String {
+        if case .pokemon(_, let name, _) = self { return name }
+        return ""
+    }
+    
+    var evolvesTo: [EvolutionNode] {
+        if case .pokemon(_, _, let evolvesTo) = self { return evolvesTo }
+        return []
+    }
 }
 
 struct Pokemon: Identifiable {
@@ -44,6 +60,6 @@ struct Pokemon: Identifiable {
     let weight: Int
     let stats: [PokemonStat]
     let abilities: [PokemonAbility]
-    let evolutionChain: [EvolutionStep]
-    let hasGenderDifferences: Bool  // 성별마다 생김새가 다른지 여부
+    let evolutionChain: EvolutionNode?  // 트리 구조로 변경
+    let hasGenderDifferences: Bool
 }

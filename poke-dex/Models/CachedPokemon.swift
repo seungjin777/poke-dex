@@ -33,7 +33,7 @@ class CachedPokemon {
             weight: 0,
             stats: [],
             abilities: [],
-            evolutionChain: [],
+            evolutionChain: nil,
             hasGenderDifferences: false
         )
     }
