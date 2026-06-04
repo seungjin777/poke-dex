@@ -101,11 +101,22 @@ struct PokemonModelView: View {
     let pokemonName: String
     let hasGenderDifferences: Bool
     
-    @State private var modelURL: URL?
+    @State private var modelURL: URL?      // 3D용
+    @State private var arModelURL: URL?    // AR용
+    
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showAR = false
     @State private var selectedGender: PokemonGender = .male
+    
+    func loadARModel() async {
+        do {
+            let gender = hasGenderDifferences ? selectedGender : .none
+            arModelURL = try await ModelService.shared.getModelURL(for: pokemonId, gender: gender, type: .ar)
+        } catch {
+            print("AR 모델 로드 에러: \(error)")
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -127,8 +138,13 @@ struct PokemonModelView: View {
                 .padding()
             } else if let url = modelURL {
                 if showAR {
-                    PokemonARViewContainer(modelURL: url)
-                        .ignoresSafeArea()
+                    if let arUrl = arModelURL {
+                        PokemonARViewContainer(modelURL: arUrl)
+                            .ignoresSafeArea()
+                    } else {
+                        // AR 모델 로딩 중
+                        ProgressView("AR 모델 로딩 중...")
+                    }
                 } else {
                     Pokemon3DView(modelURL: url)
                 }
@@ -169,19 +185,20 @@ struct PokemonModelView: View {
                     Spacer()
                     
                     // 3D/AR 전환 버튼
-                    if modelURL != nil {
-                        Button {
-                            showAR.toggle()
-                        } label: {
-                            Label(showAR ? "3D 보기" : "AR 보기", systemImage: showAR ? "cube" : "arkit")
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(.blue)
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
+                    Button {
+                        showAR.toggle()
+                        if showAR && arModelURL == nil {
+                            Task { await loadARModel() }
                         }
-                        .padding(.bottom, 32)
+                    } label: {
+                        Label(showAR ? "3D 보기" : "AR 보기", systemImage: showAR ? "cube" : "arkit")
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
                     }
+                    .padding(.bottom, 32)
                 }
             }
         }
@@ -194,17 +211,15 @@ struct PokemonModelView: View {
         }
     }
     
+    // PokemonModelView에서 loadModel 수정
     func loadModel() async {
-        // 이미 로딩 중이거나 완료됐으면 스킵
         guard modelURL == nil && !isLoading else { return }
-        
         isLoading = true
         errorMessage = nil
         do {
             let gender = hasGenderDifferences ? selectedGender : .none
-            let url = try await ModelService.shared.getModelURL(for: pokemonId, gender: gender)
-            print("모델 URL: \(url)")
-            print("파일 존재: \(FileManager.default.fileExists(atPath: url.path))")
+            // 3D용 모델 로드
+            let url = try await ModelService.shared.getModelURL(for: pokemonId, gender: gender, type: .view3D)
             modelURL = url
         } catch {
             print("모델 로드 에러: \(error)")
