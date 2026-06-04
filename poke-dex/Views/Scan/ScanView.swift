@@ -34,7 +34,6 @@ struct ScanView: View {
                         // 스캔바 오버레이
                         if isScanning {
                             GeometryReader { geo in
-                                // 스캔바
                                 Rectangle()
                                     .fill(
                                         LinearGradient(
@@ -100,14 +99,11 @@ struct ScanView: View {
                 .padding(.horizontal)
                 
                 Button {
-                    Task {
-                        await predictPokemon()
-                    }
+                    Task { await predictPokemon() }
                 } label: {
                     if isLoading {
                         HStack(spacing: 8) {
-                            ProgressView()
-                                .tint(.white)
+                            ProgressView().tint(.white)
                             Text("스캔 중...")
                         }
                         .frame(maxWidth: .infinity)
@@ -147,34 +143,21 @@ struct ScanView: View {
                     isShowingFailure = false
                     selectedImage = nil
                 })
-            }.onDisappear {
-                resetScanState()
             }
         }
     }
     
-    // 스캔바 애니메이션 시작
     func startScanAnimation() {
         isScanning = true
         scanBarOffset = 0
         withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: true)) {
-            scanBarOffset = 290  // 이미지 높이에 맞게
+            scanBarOffset = 290
         }
     }
     
-    // 스캔바 애니메이션 중지
     func stopScanAnimation() {
         isScanning = false
         scanBarOffset = 0
-    }
-    
-    func resetScanState() {
-        selectedImage = nil
-        predictionResult = nil
-        isShowingResult = false
-        isShowingFailure = false
-        isLoading = false
-        stopScanAnimation()
     }
     
     func predictPokemon() async {
@@ -185,7 +168,6 @@ struct ScanView: View {
         do {
             let result = try await PokeDexAPIService.shared.predictPokemon(image: image)
             predictionResult = result
-            
             stopScanAnimation()
             
             if result.result == "success" {

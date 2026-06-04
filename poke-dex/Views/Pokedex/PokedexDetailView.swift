@@ -16,7 +16,7 @@ struct PokedexDetailView: View {
     @State private var audioPlayer: AVPlayer?
     
     // TTS
-    let synthesizer = AVSpeechSynthesizer()
+    @State private var synthesizer = AVSpeechSynthesizer()
     
     var filteredHistories: [ScanHistory] {
         allHistories.filter { $0.pokemonNumber == pokemonId }
@@ -289,14 +289,24 @@ struct PokedexDetailView: View {
     }
     
     // TTS로 도감 설명 읽기
+    // 기존 readDescription 함수 전체를 아래로 교체
     func readDescription(pokemon: Pokemon) {
-        // 예시: "피카츄, 쥐포켓몬. 꼬리를 세우고..."
-        let text = "\(pokemon.koreanName), \(pokemon.genus). \(pokemon.description)"
+        // 이미 읽는 중이면 중지
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+            return
+        }
         
+        let text = "\(pokemon.koreanName), \(pokemon.genus). \(pokemon.description)"
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
-        utterance.rate = 0.5
-        utterance.pitchMultiplier = 1.0
+        
+        // 기기에 설치된 한국어 목소리 중 가장 좋은 품질 선택
+        utterance.voice = AVSpeechSynthesisVoice(identifier: "com.apple.voice.premium.ko-KR.Yuna")
+            ?? AVSpeechSynthesisVoice(language: "ko-KR")
+        
+        utterance.rate = 0.5          // 살짝 느리게
+        utterance.pitchMultiplier = 0.8 // 낮은 음높이 → 도감 로봇 느낌
+        utterance.volume = 1.0
         
         synthesizer.speak(utterance)
     }
