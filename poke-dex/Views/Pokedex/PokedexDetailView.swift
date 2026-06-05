@@ -283,11 +283,11 @@ struct PokedexDetailView: View {
         let utterance = AVSpeechUtterance(string: text)
         
         let voices = AVSpeechSynthesisVoice.speechVoices()
-        utterance.voice = voices.first { $0.name == "Jian (Premium)" }
-            ?? voices.first { $0.name.contains("Jian") }
+        utterance.voice = voices.first { $0.name == "Yuna (Premium)" }
+            ?? voices.first { $0.name.contains("Yuna")}
             ?? AVSpeechSynthesisVoice(language: "ko-KR")
         
-        utterance.rate = 0.45
+        utterance.rate = 0.55
         utterance.pitchMultiplier = 0.8
         utterance.volume = 1.0
         
