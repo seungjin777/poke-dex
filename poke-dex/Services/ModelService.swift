@@ -16,7 +16,7 @@ class ModelService {
     
     static let shared = ModelService()
     
-    private let baseURL = "http://192.168.45.205:8000"
+    private let baseURL = AppConfig.serverBaseURL
     
     func getModelURL(for pokemonId: Int, gender: PokemonGender = .none, type: ModelType) async throws -> URL {
         return try await downloadModel(pokemonId: pokemonId, gender: gender, type: type)
