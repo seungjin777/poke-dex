@@ -6,7 +6,7 @@ import AVFoundation
 struct PokedexDetailView: View {
     
     let pokemonId: Int
-    var autoReadDescription: Bool = false  // 추가 (스캔 후 자동 읽기)
+    var autoReadDescription: Bool = false
     
     @Environment(\.modelContext) private var modelContext
     @Query private var allHistories: [ScanHistory]
@@ -14,8 +14,6 @@ struct PokedexDetailView: View {
     @State private var pokemon: Pokemon?
     @State private var isLoading = false
     @State private var audioPlayer: AVPlayer?
-    
-    // TTS
     @State private var synthesizer = AVSpeechSynthesizer()
     
     var filteredHistories: [ScanHistory] {
@@ -71,13 +69,16 @@ struct PokedexDetailView: View {
                         .foregroundStyle(.gray)
                         .font(.subheadline)
                     
-                    // 타입
+                    // 타입 뱃지 - 타입별 고유 색상 적용
                     HStack {
                         ForEach(pokemon.types, id: \.self) { type in
                             Text(type)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 4)
-                                .background(.blue.opacity(0.2))
+                                .font(.subheadline)
+                                .bold()
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(typeColors[type] ?? .gray)
                                 .clipShape(Capsule())
                         }
                     }
@@ -99,8 +100,6 @@ struct PokedexDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        
-                        // 성별 표시
                         VStack {
                             genderView(genderRate: pokemon.genderRate)
                             Text("성별")
@@ -119,8 +118,8 @@ struct PokedexDetailView: View {
                         Button {
                             readDescription(pokemon: pokemon)
                         } label: {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .foregroundStyle(.blue)
+                            Image(systemName: synthesizer.isSpeaking ? "stop.circle.fill" : "speaker.wave.2.fill")
+                                .foregroundStyle(synthesizer.isSpeaking ? .red : .blue)
                                 .font(.title3)
                         }
                     }
@@ -214,51 +213,39 @@ struct PokedexDetailView: View {
         .navigationTitle(pokemon?.koreanName ?? "")
         .task {
             await loadPokemon()
-        }.onDisappear {
+        }
+        .onDisappear {
             synthesizer.stopSpeaking(at: .immediate)
         }
     }
     
-    // 울음소리 재생
     func playCry(pokemonId: Int) {
         let urlString = "https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/\(pokemonId).ogg"
-        // ogg는 iOS에서 직접 재생 불가 → legacy mp3 사용
-        let legacyUrl = "https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/legacy/\(pokemonId).ogg"
-        
-        // PokeAPI는 ogg 포맷이라 직접 재생 불가
-        // AVPlayer로 스트리밍 시도 (일부 기기에서 작동)
         if let url = URL(string: urlString) {
             audioPlayer = AVPlayer(url: url)
             audioPlayer?.play()
         }
     }
     
-    // 성별 아이콘 생성
     @ViewBuilder
     func genderView(genderRate: Int) -> some View {
         switch genderRate {
         case -1:
-            // 무성
             Image(systemName: "minus.circle")
                 .foregroundStyle(.gray)
                 .font(.headline)
         case 0:
-            // 수컷만
             Text("♂")
                 .foregroundStyle(.blue)
                 .font(.headline)
         case 8:
-            // 암컷만
             Text("♀")
                 .foregroundStyle(.pink)
                 .font(.headline)
         default:
-            // 암수 모두
             HStack(spacing: 2) {
-                Text("♂")
-                    .foregroundStyle(.blue)
-                Text("♀")
-                    .foregroundStyle(.pink)
+                Text("♂").foregroundStyle(.blue)
+                Text("♀").foregroundStyle(.pink)
             }
             .font(.headline)
         }
@@ -277,8 +264,6 @@ struct PokedexDetailView: View {
         isLoading = true
         do {
             pokemon = try await PokeAPIService.shared.fetchPokemon(id: pokemonId)
-            
-            // 스캔 후 진입한 경우 TTS 자동 실행
             if autoReadDescription, let pokemon = pokemon {
                 readDescription(pokemon: pokemon)
             }
@@ -288,10 +273,7 @@ struct PokedexDetailView: View {
         isLoading = false
     }
     
-    // TTS로 도감 설명 읽기
-    // 기존 readDescription 함수 전체를 아래로 교체
     func readDescription(pokemon: Pokemon) {
-        // 이미 읽는 중이면 중지
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
             return
@@ -300,38 +282,35 @@ struct PokedexDetailView: View {
         let text = "\(pokemon.koreanName), \(pokemon.genus). \(pokemon.description)"
         let utterance = AVSpeechUtterance(string: text)
         
-        // 기기에 설치된 한국어 목소리 중 가장 좋은 품질 선택
-        utterance.voice = AVSpeechSynthesisVoice(identifier: "com.apple.voice.premium.ko-KR.Yuna")
+        let voices = AVSpeechSynthesisVoice.speechVoices()
+        utterance.voice = voices.first { $0.name == "Jian (Premium)" }
+            ?? voices.first { $0.name.contains("Jian") }
             ?? AVSpeechSynthesisVoice(language: "ko-KR")
         
-        utterance.rate = 0.5          // 살짝 느리게
-        utterance.pitchMultiplier = 0.8 // 낮은 음높이 → 도감 로봇 느낌
+        utterance.rate = 0.45
+        utterance.pitchMultiplier = 0.8
         utterance.volume = 1.0
         
         synthesizer.speak(utterance)
     }
 }
 
-// 진화 트리 뷰 - 재귀적으로 분기 진화 렌더링
+// 진화 트리 뷰
 struct EvolutionTreeView: View {
     let node: EvolutionNode
     
     var body: some View {
         HStack(alignment: .top, spacing: 4) {
-            // 현재 포켓몬
             EvolutionPokemonView(id: node.id)
             
-            // 다음 진화가 있으면 화살표 + 분기 렌더링
             if !node.evolvesTo.isEmpty {
                 Image(systemName: "arrow.right")
                     .foregroundStyle(.gray)
                     .padding(.top, 28)
                 
-                // 분기가 1개면 가로로, 여러 개면 세로로 나열
                 if node.evolvesTo.count == 1 {
                     EvolutionTreeView(node: node.evolvesTo[0])
                 } else {
-                    // 분기 진화: 세로로 나열
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(Array(node.evolvesTo.enumerated()), id: \.offset) { _, child in
                             EvolutionTreeView(node: child)
@@ -343,7 +322,6 @@ struct EvolutionTreeView: View {
     }
 }
 
-// 진화 포켓몬 이미지 + 번호 표시
 struct EvolutionPokemonView: View {
     let id: Int
     
@@ -360,7 +338,7 @@ struct EvolutionPokemonView: View {
                     .foregroundStyle(.gray)
             }
         }
-        .buttonStyle(.plain) // NavigationLink 기본 파란색 스타일 제거
+        .buttonStyle(.plain)
     }
 }
 

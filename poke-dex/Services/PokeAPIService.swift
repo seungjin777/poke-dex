@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 struct PokemonResponse: Codable {
     let id: Int
@@ -122,6 +123,28 @@ let statTranslations: [String: String] = [
     "special-attack": "특수공격", "special-defense": "특수방어", "speed": "스피드"
 ]
 
+// 포켓몬 타입별 고유 색상 (한국어 타입명 기준)
+let typeColors: [String: Color] = [
+    "노말":   Color(red: 0.62, green: 0.62, blue: 0.62),
+    "불꽃":   Color(red: 0.94, green: 0.40, blue: 0.13),
+    "물":     Color(red: 0.24, green: 0.56, blue: 0.94),
+    "풀":     Color(red: 0.30, green: 0.69, blue: 0.26),
+    "전기":   Color(red: 0.98, green: 0.78, blue: 0.09),
+    "얼음":   Color(red: 0.40, green: 0.80, blue: 0.87),
+    "격투":   Color(red: 0.76, green: 0.19, blue: 0.10),
+    "독":     Color(red: 0.63, green: 0.25, blue: 0.63),
+    "땅":     Color(red: 0.80, green: 0.62, blue: 0.22),
+    "비행":   Color(red: 0.42, green: 0.56, blue: 0.90),
+    "에스퍼": Color(red: 0.97, green: 0.22, blue: 0.46),
+    "벌레":   Color(red: 0.65, green: 0.72, blue: 0.08),
+    "바위":   Color(red: 0.71, green: 0.63, blue: 0.22),
+    "고스트": Color(red: 0.44, green: 0.34, blue: 0.59),
+    "드래곤": Color(red: 0.44, green: 0.22, blue: 0.94),
+    "악":     Color(red: 0.44, green: 0.31, blue: 0.22),
+    "강철":   Color(red: 0.72, green: 0.72, blue: 0.82),
+    "페어리": Color(red: 0.94, green: 0.51, blue: 0.71)
+]
+
 class PokeAPIService {
     
     static let shared = PokeAPIService()
@@ -164,7 +187,7 @@ class PokeAPIService {
         return pokemons
     }
     
-    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool, genderRate: Int, genus: String ) {
+    func fetchPokemonSpecies(id: Int) async throws -> (name: String, description: String, evolutionChainUrl: String, hasGenderDifferences: Bool, genderRate: Int, genus: String) {
         let url = URL(string: "https://pokeapi.co/api/v2/pokemon-species/\(id)")!
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(PokemonSpeciesResponse.self, from: data)
@@ -191,10 +214,8 @@ class PokeAPIService {
         let (data, _) = try await URLSession.shared.data(from: URL(string: url)!)
         let response = try JSONDecoder().decode(EvolutionChainResponse.self, from: data)
         
-        // ChainLink를 재귀적으로 EvolutionNode 트리로 변환
         func parseNode(_ link: ChainLink) -> EvolutionNode {
             let id = Int(link.species.url.split(separator: "/").last ?? "0") ?? 0
-            // evolves_to 배열 전체를 재귀 파싱 (분기 진화 지원)
             let children = link.evolves_to.map { parseNode($0) }
             return .pokemon(id: id, name: link.species.name, evolvesTo: children)
         }

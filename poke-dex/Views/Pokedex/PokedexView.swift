@@ -2,6 +2,19 @@ import SwiftUI
 import Kingfisher
 import SwiftData
 
+// 세대별 스타팅 포켓몬 3마리 ID (비크티니 제외한 실제 스타팅 기준)
+let generationStarters: [Int: [Int]] = [
+    1: [1, 4, 7],       // 이상해씨, 파이리, 꼬부기
+    2: [152, 155, 158], // 치코리타, 브케인, 리아코
+    3: [252, 255, 258], // 나무지기, 아차모, 물짱이
+    4: [387, 390, 393], // 모부기, 불꽃숭이, 팽도리
+    5: [495, 498, 501], // 주리비얀, 챠오꿈, 오샤왓 (비크티니 제외)
+    6: [650, 653, 656], // 도치마론, 푸호꼬, 개굴닌자
+    7: [722, 725, 728], // 나몰빼미, 냐오불, 물범벨
+    8: [810, 813, 816], // 흥나숭, 염버니, 울머기
+    9: [906, 909, 912]  // 나오하, 뜨아거, 꾸아꾸아
+]
+
 struct PokedexView: View {
     
     @Environment(\.modelContext) private var modelContext
@@ -23,7 +36,6 @@ struct PokedexView: View {
         NavigationStack {
             Group {
                 if searchText.isEmpty {
-                    // 기본: 세대 카드 목록
                     ScrollView {
                         VStack(spacing: 16) {
                             ForEach(generations, id: \.id) { generation in
@@ -35,7 +47,6 @@ struct PokedexView: View {
                         .padding()
                     }
                 } else {
-                    // 검색 결과 목록 - 클릭할 때만 이동
                     List(searchResults) { pokemon in
                         NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
                             HStack {
@@ -54,7 +65,6 @@ struct PokedexView: View {
                             }
                         }
                     }
-                    // 검색 결과 없을 때
                     .overlay {
                         if searchResults.isEmpty {
                             VStack(spacing: 12) {
@@ -80,36 +90,50 @@ struct PokedexView: View {
 struct GenerationCardView: View {
     let generation: Generation
     
+    // 해당 세대 스타팅 3마리 이미지 URL
+    var starterImageUrls: [String] {
+        let ids = generationStarters[generation.id] ?? [generation.range.lowerBound]
+        return ids.map {
+            "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\($0).png"
+        }
+    }
+    
     var body: some View {
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.blue.opacity(0.15))
-                .frame(height: 100)
+                .frame(height: 110)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 0) {
+                // 세대 정보 (좌측)
+                VStack(alignment: .leading, spacing: 6) {
                     Text("\(generation.name) 지방")
                         .font(.title2)
                         .bold()
                         .foregroundStyle(.primary)
-                    
                     Text("\(generation.range.count)마리")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(.leading)
                 
                 Spacer()
                 
-                KFImage(URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(generation.range.lowerBound).png"))
-                    .placeholder {
-                        ProgressView()
-                            .frame(width: 80, height: 80)
+                // 스타팅 3마리 이미지 (우측, 살짝 겹치게)
+                ZStack {
+                    ForEach(Array(starterImageUrls.enumerated()), id: \.offset) { index, urlString in
+                        KFImage(URL(string: urlString))
+                            .placeholder { Color.clear.frame(width: 70, height: 70) }
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 70, height: 70)
+                            // 뒤로 갈수록 오른쪽에 위치, 앞 이미지가 위에 겹침
+                            .offset(x: CGFloat(index - 1) * 45)
+                            .zIndex(Double(index))// 첫 번째가 제일 앞
                     }
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)
-                    .padding(.trailing)
+                }
+                .frame(width: 70 + 44 * 2) // 3마리 겹친 전체 너비
+                .padding(.trailing, 8)
             }
         }
         .buttonStyle(.plain)
