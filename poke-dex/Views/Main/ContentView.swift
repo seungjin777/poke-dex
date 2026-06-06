@@ -9,17 +9,17 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             PokedexView()
                 .id(tabIDs[0])
-                .tabItem { Label("도감", systemImage: "book.fill") }
+                .tabItem { Label("포켓몬 도감", systemImage: "book.fill") }
                 .tag(0)
             
             ScanView()
                 .id(tabIDs[1])
-                .tabItem { Label("스캔", systemImage: "camera.fill") }
+                .tabItem { Label("로토무 스캔", systemImage: "camera.fill") }
                 .tag(1)
             
             HistoryView()
                 .id(tabIDs[2])
-                .tabItem { Label("히스토리", systemImage: "clock.fill") }
+                .tabItem { Label("My 히스토리", systemImage: "clock.fill") }
                 .tag(2)
         }
         .onChange(of: selectedTab) { oldTab, newTab in

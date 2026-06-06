@@ -85,7 +85,7 @@ struct HistoryView: View {
                     .searchable(text: $searchText, prompt: "포켓몬 이름 또는 번호 검색")
                 }
             }
-            .navigationTitle("히스토리")
+            .navigationTitle("My 히스토리")
             // 정렬 메뉴
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

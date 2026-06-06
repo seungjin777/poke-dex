@@ -2,17 +2,16 @@ import SwiftUI
 import Kingfisher
 import SwiftData
 
-// 세대별 스타팅 포켓몬 3마리 ID (비크티니 제외한 실제 스타팅 기준)
 let generationStarters: [Int: [Int]] = [
-    1: [1, 4, 7],       // 이상해씨, 파이리, 꼬부기
-    2: [152, 155, 158], // 치코리타, 브케인, 리아코
-    3: [252, 255, 258], // 나무지기, 아차모, 물짱이
-    4: [387, 390, 393], // 모부기, 불꽃숭이, 팽도리
-    5: [495, 498, 501], // 주리비얀, 챠오꿈, 오샤왓 (비크티니 제외)
-    6: [650, 653, 656], // 도치마론, 푸호꼬, 개굴닌자
-    7: [722, 725, 728], // 나몰빼미, 냐오불, 물범벨
-    8: [810, 813, 816], // 흥나숭, 염버니, 울머기
-    9: [906, 909, 912]  // 나오하, 뜨아거, 꾸아꾸아
+    1: [1, 4, 7],
+    2: [152, 155, 158],
+    3: [252, 255, 258],
+    4: [387, 390, 393],
+    5: [495, 498, 501],
+    6: [650, 653, 656],
+    7: [722, 725, 728],
+    8: [810, 813, 816],
+    9: [906, 909, 912]
 ]
 
 struct PokedexView: View {
@@ -21,8 +20,9 @@ struct PokedexView: View {
     @Query private var cachedPokemons: [CachedPokemon]
     
     @State private var searchText = ""
+    @State private var isLampBlinking = false
+    @FocusState private var isSearchFocused: Bool
     
-    // 캐시된 포켓몬 중 검색어와 매칭되는 결과
     var searchResults: [CachedPokemon] {
         guard !searchText.isEmpty else { return [] }
         return cachedPokemons.filter {
@@ -32,57 +32,174 @@ struct PokedexView: View {
         .sorted { $0.id < $1.id }
     }
     
-    var body: some View {
-        NavigationStack {
-            Group {
-                if searchText.isEmpty {
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            ForEach(generations, id: \.id) { generation in
-                                NavigationLink(destination: GenerationPokemonListView(generation: generation)) {
-                                    GenerationCardView(generation: generation)
-                                }
-                            }
-                        }
-                        .padding()
-                    }
-                } else {
-                    List(searchResults) { pokemon in
-                        NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
-                            HStack {
-                                KFImage(URL(string: pokemon.imageUrl))
-                                    .placeholder { ProgressView().frame(width: 50, height: 50) }
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 50, height: 50)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("No.\(String(format: "%04d", pokemon.id))")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text(pokemon.koreanName)
-                                }
-                            }
-                        }
-                    }
-                    .overlay {
-                        if searchResults.isEmpty {
-                            VStack(spacing: 12) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 40))
-                                    .foregroundStyle(.gray)
-                                Text("검색 결과가 없어요")
-                                    .foregroundStyle(.secondary)
-                                Text("도감을 먼저 열어서 데이터를 불러와주세요")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+    func blinkLamp() {
+        guard !isLampBlinking else { return }
+        isLampBlinking = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            isLampBlinking = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isLampBlinking = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isLampBlinking = false
                 }
             }
-            .navigationTitle("도감")
-            .searchable(text: $searchText, prompt: "포켓몬 이름 또는 번호 검색")
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(red: 0.894, green: 0.317, blue: 0.357)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    
+                    // 상단 램프 영역
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: isLampBlinking ? 0.267 : 0.29,
+                                            green: isLampBlinking ? 0.906 : 0.56,
+                                            blue: isLampBlinking ? 0.903 : 0.85))
+                                .frame(width: 52, height: 52)
+                                .overlay(Circle().stroke(.white, lineWidth: 3))
+                                .animation(.easeInOut(duration: 0.1), value: isLampBlinking)
+                            Circle()
+                                .fill(.white.opacity(0.35))
+                                .frame(width: 18, height: 18)
+                                .offset(x: -8, y: -10)
+                                .animation(.easeInOut(duration: 0.1), value: isLampBlinking)
+                        }
+                        
+                        HStack(spacing: 7) {
+                            ForEach([
+                                (Color(red: 0.89, green: 0.29, blue: 0.29), "red"),
+                                (Color(red: 0.96, green: 0.77, blue: 0.09), "yellow"),
+                                (Color(red: 0.30, green: 0.69, blue: 0.31), "green")
+                            ], id: \.1) { color, _ in
+                                ZStack {
+                                    Circle()
+                                        .fill(color)
+                                        .frame(width: 14, height: 14)
+                                        .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 1.5))
+                                    Circle()
+                                        .fill(.white.opacity(isLampBlinking ? 0.0 : 0.4))
+                                        .frame(width: 5, height: 5)
+                                        .offset(x: -2, y: -3)
+                                        .animation(.easeInOut(duration: 0.1), value: isLampBlinking)
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Text("포켓몬 도감")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 14)
+                    
+                    // 커스텀 검색창
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.gray)
+                        TextField("포켓몬 이름 또는 번호 검색", text: $searchText)
+                            .focused($isSearchFocused)
+                            .onSubmit {
+                                isSearchFocused = false
+                                blinkLamp()
+                            }
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                                isSearchFocused = false
+                                blinkLamp()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.gray)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+                    
+                    // 콘텐츠 영역
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            if searchText.isEmpty {
+                                ForEach(generations, id: \.id) { generation in
+                                    NavigationLink(destination: GenerationPokemonListView(generation: generation)) {
+                                        GenerationCardView(generation: generation)
+                                    }
+                                    .simultaneousGesture(TapGesture().onEnded {
+                                        blinkLamp()
+                                    })
+                                }
+                            } else {
+                                if searchResults.isEmpty {
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: 40))
+                                            .foregroundStyle(.white.opacity(0.6))
+                                        Text("검색 결과가 없어요")
+                                            .foregroundStyle(.white.opacity(0.8))
+                                        Text("도감을 먼저 열어서 데이터를 불러와주세요")
+                                            .font(.caption)
+                                            .foregroundStyle(.white.opacity(0.6))
+                                    }
+                                    .padding(.top, 60)
+                                } else {
+                                    ForEach(searchResults) { pokemon in
+                                        NavigationLink(destination: PokedexDetailView(pokemonId: pokemon.id)) {
+                                            HStack {
+                                                KFImage(URL(string: pokemon.imageUrl))
+                                                    .placeholder { ProgressView().frame(width: 50, height: 50) }
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 50, height: 50)
+                                                
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("No.\(String(format: "%04d", pokemon.id))")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.gray.opacity(0.7))
+                                                    Text(pokemon.koreanName)
+                                                        .foregroundStyle(.black)
+                                                }
+                                                Spacer()
+                                            }
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 10)
+                                            .background(.white)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        }
+                                        .simultaneousGesture(TapGesture().onEnded {
+                                            blinkLamp()
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                    }
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 10).onChanged { _ in
+                            isSearchFocused = false
+                            blinkLamp()
+                        }
+                    )
+                }
+            }
+            .navigationBarHidden(true)
+            .onAppear {
+                blinkLamp()
+            }
         }
     }
 }
@@ -90,7 +207,6 @@ struct PokedexView: View {
 struct GenerationCardView: View {
     let generation: Generation
     
-    // 해당 세대 스타팅 3마리 이미지 URL
     var starterImageUrls: [String] {
         let ids = generationStarters[generation.id] ?? [generation.range.lowerBound]
         return ids.map {
@@ -100,26 +216,23 @@ struct GenerationCardView: View {
     
     var body: some View {
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.blue.opacity(0.15))
-                .frame(height: 110)
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(red: 0.847, green: 0.928, blue: 0.999))
             
             HStack(spacing: 0) {
-                // 세대 정보 (좌측)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(generation.name) 지방")
-                        .font(.title2)
-                        .bold()
-                        .foregroundStyle(.primary)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color(red: 0.076, green: 0.557, blue: 0.999))
                     Text("\(generation.range.count)마리")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(red: 0.546, green: 0.788, blue: 1))
                 }
-                .padding(.leading)
+                .padding(.leading, 16)
                 
                 Spacer()
                 
-                // 스타팅 3마리 이미지 (우측, 살짝 겹치게)
                 ZStack {
                     ForEach(Array(starterImageUrls.enumerated()), id: \.offset) { index, urlString in
                         KFImage(URL(string: urlString))
@@ -127,15 +240,16 @@ struct GenerationCardView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 70, height: 70)
-                            // 뒤로 갈수록 오른쪽에 위치, 앞 이미지가 위에 겹침
                             .offset(x: CGFloat(index - 1) * 45)
-                            .zIndex(Double(index))// 첫 번째가 제일 앞
+                            .zIndex(Double(index))
                     }
                 }
-                .frame(width: 70 + 44 * 2) // 3마리 겹친 전체 너비
+                .frame(width: 70 + 44 * 2)
                 .padding(.trailing, 8)
             }
+            .padding(.vertical, 12)
         }
+        .frame(height: 90)
         .buttonStyle(.plain)
     }
 }

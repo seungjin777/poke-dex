@@ -2,134 +2,276 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 
+// 인라인 카메라 프리뷰 UIViewRepresentable
+struct CameraPreviewView: UIViewRepresentable {
+    let session: AVCaptureSession
+    
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.frame = view.bounds
+        view.layer.addSublayer(previewLayer)
+        
+        DispatchQueue.main.async {
+            previewLayer.frame = view.bounds
+        }
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        if let layer = uiView.layer.sublayers?.first as? AVCaptureVideoPreviewLayer {
+            layer.frame = uiView.bounds
+        }
+    }
+}
+
 struct ScanView: View {
     
     @Environment(\.modelContext) private var modelContext
     
     @State private var selectedImage: UIImage?
-    @State private var isShowingCamera = false
     @State private var isShowingPhotoLibrary = false
     @State private var isLoading = false
     @State private var predictionResult: PredictionResponse?
     @State private var isShowingResult = false
     @State private var isShowingFailure = false
     
+    // 카메라 관련
+    @State private var isCameraActive = false
+    @State private var captureSession = AVCaptureSession()
+    @State private var photoOutput = AVCapturePhotoOutput()
+    @State private var cameraDelegate: CameraDelegate?
+    @State private var currentZoom: CGFloat = 1.0
+    @State private var lastZoom: CGFloat = 1.0
+    
     // 스캔바 애니메이션
     @State private var isScanning = false
     @State private var scanBarOffset: CGFloat = 0
     
+    //로토무
+    @State private var isBlinking = false
+    
+    // 파란 포인트 컬러
+    let rotomBlue = Color(red: 0.29, green: 0.56, blue: 0.85)
+    
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            ZStack {
+                // 주황 배경
+                LinearGradient(
+                    colors: [Color(red: 0.96, green: 0.53, blue: 0.29),
+                             Color(red: 0.91, green: 0.40, blue: 0.10),
+                             Color(red: 0.82, green: 0.31, blue: 0.04)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                // 이미지 영역
-                ZStack {
-                    if let image = selectedImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(spacing: 24) {
+                    
+                    // 이미지 영역
+                    GeometryReader { geo in
+                        let size = geo.size.width
                         
-                        // 스캔바 오버레이
-                        if isScanning {
-                            GeometryReader { geo in
-                                Rectangle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                .blue.opacity(0),
-                                                .blue.opacity(0.8),
-                                                .cyan.opacity(0.9),
-                                                .blue.opacity(0.8),
-                                                .blue.opacity(0)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
+                        ZStack {
+                            if isCameraActive {
+                                CameraPreviewView(session: captureSession)
+                                    .frame(width: size, height: size)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .gesture(
+                                        MagnificationGesture()
+                                            .onChanged { value in setZoom(lastZoom * value) }
+                                            .onEnded { _ in lastZoom = currentZoom }
                                     )
-                                    .frame(height: 6)
-                                    .shadow(color: .cyan, radius: 8)
-                                    .offset(y: scanBarOffset)
-                            }
-                            .frame(maxHeight: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        
-                    } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(maxHeight: 300)
-                            .overlay {
-                                VStack {
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 50))
-                                        .foregroundStyle(.gray)
-                                    Text("사진을 선택하거나 촬영해주세요")
-                                        .foregroundStyle(.gray)
+                            } else if let image = selectedImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: size, height: size)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                
+                                if isScanning {
+                                    GeometryReader { _ in
+                                        Rectangle()
+                                            .fill(LinearGradient(
+                                                colors: [.blue.opacity(0), .blue.opacity(0.8), .cyan.opacity(0.9), .blue.opacity(0.8), .blue.opacity(0)],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            ))
+                                            .frame(height: 6)
+                                            .shadow(color: .cyan, radius: 8)
+                                            .offset(y: scanBarOffset)
+                                    }
+                                    .frame(width: size, height: size)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.black.opacity(0.3))
+                                    .frame(width: size, height: size)
+                                    .overlay {
+                                        VStack(spacing: 12) {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 50))
+                                                .foregroundStyle(.white.opacity(0.7))
+                                            Text("사진을 선택하거나 촬영해주세요")
+                                                .foregroundStyle(.white.opacity(0.7))
+                                        }
+                                    }
                             }
+                            
+                            // 모서리 가이드라인 (카메라 활성화 시)
+                            if isCameraActive {
+                                // 좌상단
+                                Path { p in
+                                    p.move(to: CGPoint(x: 20, y: 36))
+                                    p.addLine(to: CGPoint(x: 20, y: 20))
+                                    p.addLine(to: CGPoint(x: 36, y: 20))
+                                }
+                                .stroke(rotomBlue, lineWidth: 3)
+                                // 우상단
+                                Path { p in
+                                    p.move(to: CGPoint(x: size - 36, y: 20))
+                                    p.addLine(to: CGPoint(x: size - 20, y: 20))
+                                    p.addLine(to: CGPoint(x: size - 20, y: 36))
+                                }
+                                .stroke(rotomBlue, lineWidth: 3)
+                                // 좌하단
+                                Path { p in
+                                    p.move(to: CGPoint(x: 20, y: size - 36))
+                                    p.addLine(to: CGPoint(x: 20, y: size - 20))
+                                    p.addLine(to: CGPoint(x: 36, y: size - 20))
+                                }
+                                .stroke(rotomBlue, lineWidth: 3)
+                                // 우하단
+                                Path { p in
+                                    p.move(to: CGPoint(x: size - 36, y: size - 20))
+                                    p.addLine(to: CGPoint(x: size - 20, y: size - 20))
+                                    p.addLine(to: CGPoint(x: size - 20, y: size - 36))
+                                }
+                                .stroke(rotomBlue, lineWidth: 3)
+                            }
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(rotomBlue, lineWidth: 2.5)
+                        )
                     }
-                }
-                .frame(maxHeight: 300)
-                
-                HStack(spacing: 16) {
-                    Button {
-                        isShowingCamera = true
-                    } label: {
-                        Label("카메라", systemImage: "camera.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.blue)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .aspectRatio(1, contentMode: .fit)
+                    .padding(.horizontal)
+                    .overlay(alignment: .top) {
+                        HStack(spacing: 25) {
+                            Image("rotom_eyeL")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 100)
+                                .scaleEffect(y: isBlinking ? 0.05 : 1.0)
+                                .animation(.easeInOut(duration: 0.08), value: isBlinking)
+                            
+                            Image("rotom_eyeR")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 100)
+                                .scaleEffect(y: isBlinking ? 0.05 : 1.0)
+                                .animation(.easeInOut(duration: 0.08), value: isBlinking)
+                        }
+                        .padding(.horizontal)
+                        .offset(y: -50) // 눈 높이의 절반만큼 위로 올려서 테두리에 걸치게
+                    }
+                    .overlay(alignment: .center) {
+                        // 입 - 사진 없을 때만 표시
+                        if selectedImage == nil && !isCameraActive {
+                            Image("rotom_mouth")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 120, height: 60)
+                                .padding(.top, -140)
+                        }
+                    }
+                    .onAppear {
+                        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+                            isBlinking = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                isBlinking = false
+                            }
+                        }
                     }
                     
-                    Button {
-                        isShowingPhotoLibrary = true
-                    } label: {
-                        Label("앨범", systemImage: "photo.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.green)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                }
-                .padding(.horizontal)
-                
-                Button {
-                    Task { await predictPokemon() }
-                } label: {
-                    if isLoading {
-                        HStack(spacing: 8) {
-                            ProgressView().tint(.white)
-                            Text("스캔 중...")
+                    HStack(spacing: 16) {
+                        // 카메라/촬영 버튼
+                        Button {
+                            if isCameraActive {
+                                capturePhoto()
+                            } else {
+                                selectedImage = nil
+                                startCamera()
+                            }
+                        } label: {
+                            Label(isCameraActive ? "포착하기!" : "포켓몬 스캔", systemImage: isCameraActive ? "bolt.fill" : "camera.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(isCameraActive ? .red : .blue)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .shadow(color: .black.opacity(0.6), radius: 5, y: 7)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.gray)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    } else {
-                        Text("판별하기")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(selectedImage == nil ? .gray : .red)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        
+                        // 앨범/취소 버튼
+                        Button {
+                            if isCameraActive {
+                                stopCamera()
+                            } else {
+                                isShowingPhotoLibrary = true
+                            }
+                        } label: {
+                            Label(isCameraActive ? "취소" : "My 앨범", systemImage: isCameraActive ? "xmark" : "photo.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(isCameraActive ? .gray : .green)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .shadow(color: .black.opacity(0.6), radius: 5, y: 7)
+                        }
                     }
+                    .padding(.horizontal)
+                    
+                    // 판별하기 버튼 (카메라 활성화 중엔 숨김)
+                    if !isCameraActive {
+                        Button {
+                            Task { await predictPokemon() }
+                        } label: {
+                            if isLoading {
+                                HStack(spacing: 8) {
+                                    ProgressView().tint(.white)
+                                    Text("스캔 중...")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(.gray)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                Text("판별하기")
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(selectedImage == nil ? .gray : .red)
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .shadow(color: .black.opacity(0.6), radius: 5, y: 7)
+                            }
+                        }
+                        .disabled(selectedImage == nil || isLoading)
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer()
                 }
-                .disabled(selectedImage == nil || isLoading)
-                .padding(.horizontal)
-                
-                Spacer()
+                .padding(.top, 100)
             }
-            .padding(.top)
-            .navigationTitle("스캔")
-            .sheet(isPresented: $isShowingCamera) {
-                ImagePicker(selectedImage: $selectedImage, sourceType: .camera)
-            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(.clear, for: .navigationBar)
             .sheet(isPresented: $isShowingPhotoLibrary) {
                 ImagePicker(selectedImage: $selectedImage, sourceType: .photoLibrary)
             }
@@ -144,7 +286,82 @@ struct ScanView: View {
                     selectedImage = nil
                 })
             }
+            .onDisappear {
+                stopCamera()
+            }
         }
+    }
+    
+    func startCamera() {
+        Task {
+            guard await AVCaptureDevice.requestAccess(for: .video) else { return }
+            
+            captureSession = AVCaptureSession()
+            photoOutput = AVCapturePhotoOutput()
+            
+            let device: AVCaptureDevice
+            if #available(iOS 15.4, *),
+               let macroDevice = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) {
+                device = macroDevice
+            } else if let wideDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+                device = wideDevice
+            } else {
+                return
+            }
+            
+            guard let input = try? AVCaptureDeviceInput(device: device) else { return }
+            
+            try? device.lockForConfiguration()
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+            if device.isAutoFocusRangeRestrictionSupported {
+                device.autoFocusRangeRestriction = .none
+            }
+            device.unlockForConfiguration()
+            
+            captureSession.beginConfiguration()
+            if captureSession.canAddInput(input) { captureSession.addInput(input) }
+            if captureSession.canAddOutput(photoOutput) { captureSession.addOutput(photoOutput) }
+            captureSession.commitConfiguration()
+            
+            DispatchQueue.global(qos: .background).async {
+                captureSession.startRunning()
+            }
+            
+            await MainActor.run {
+                isCameraActive = true
+                currentZoom = 1.0
+                lastZoom = 1.0
+            }
+        }
+    }
+    
+    func stopCamera() {
+        captureSession.stopRunning()
+        isCameraActive = false
+    }
+    
+    func setZoom(_ zoom: CGFloat) {
+        guard let device = (captureSession.inputs.first as? AVCaptureDeviceInput)?.device else { return }
+        let maxZoom = min(device.activeFormat.videoMaxZoomFactor, 5.0)
+        let clampedZoom = max(1.0, min(zoom, maxZoom))
+        try? device.lockForConfiguration()
+        device.videoZoomFactor = clampedZoom
+        device.unlockForConfiguration()
+        currentZoom = clampedZoom
+    }
+    
+    func capturePhoto() {
+        let delegate = CameraDelegate { image in
+            DispatchQueue.main.async {
+                selectedImage = image
+                stopCamera()
+            }
+        }
+        cameraDelegate = delegate
+        let settings = AVCapturePhotoSettings()
+        photoOutput.capturePhoto(with: settings, delegate: delegate)
     }
     
     func startScanAnimation() {
@@ -190,6 +407,20 @@ struct ScanView: View {
             print("판별 실패: \(error)")
         }
         isLoading = false
+    }
+}
+
+class CameraDelegate: NSObject, AVCapturePhotoCaptureDelegate {
+    let onCapture: (UIImage) -> Void
+    
+    init(onCapture: @escaping (UIImage) -> Void) {
+        self.onCapture = onCapture
+    }
+    
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        guard let data = photo.fileDataRepresentation(),
+              let image = UIImage(data: data) else { return }
+        onCapture(image)
     }
 }
 

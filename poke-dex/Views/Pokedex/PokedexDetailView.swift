@@ -15,8 +15,8 @@ struct PokedexDetailView: View {
     @State private var isLoading = false
     @State private var audioPlayer: AVPlayer?
     @State private var synthesizer = AVSpeechSynthesizer()
+    @State private var hasAutoRead = false
     
-    // State 추가 (View 상단에)
     @State private var is3DPressed = false
     @State private var isCryPressed = false
     
@@ -337,7 +337,9 @@ struct PokedexDetailView: View {
         isLoading = true
         do {
             pokemon = try await PokeAPIService.shared.fetchPokemon(id: pokemonId)
-            if autoReadDescription, let pokemon = pokemon {
+            // 최초 1회만 자동 읽기
+            if autoReadDescription && !hasAutoRead, let pokemon = pokemon {
+                hasAutoRead = true
                 readDescription(pokemon: pokemon)
             }
         } catch {
