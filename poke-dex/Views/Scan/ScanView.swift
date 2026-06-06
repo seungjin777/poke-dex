@@ -121,37 +121,36 @@ struct ScanView: View {
                                     }
                             }
                             
-                            // 모서리 가이드라인 (카메라 활성화 시)
-                            if isCameraActive {
-                                // 좌상단
-                                Path { p in
-                                    p.move(to: CGPoint(x: 20, y: 36))
-                                    p.addLine(to: CGPoint(x: 20, y: 20))
-                                    p.addLine(to: CGPoint(x: 36, y: 20))
-                                }
-                                .stroke(rotomBlue, lineWidth: 3)
-                                // 우상단
-                                Path { p in
-                                    p.move(to: CGPoint(x: size - 36, y: 20))
-                                    p.addLine(to: CGPoint(x: size - 20, y: 20))
-                                    p.addLine(to: CGPoint(x: size - 20, y: 36))
-                                }
-                                .stroke(rotomBlue, lineWidth: 3)
-                                // 좌하단
-                                Path { p in
-                                    p.move(to: CGPoint(x: 20, y: size - 36))
-                                    p.addLine(to: CGPoint(x: 20, y: size - 20))
-                                    p.addLine(to: CGPoint(x: 36, y: size - 20))
-                                }
-                                .stroke(rotomBlue, lineWidth: 3)
-                                // 우하단
-                                Path { p in
-                                    p.move(to: CGPoint(x: size - 36, y: size - 20))
-                                    p.addLine(to: CGPoint(x: size - 20, y: size - 20))
-                                    p.addLine(to: CGPoint(x: size - 20, y: size - 36))
-                                }
-                                .stroke(rotomBlue, lineWidth: 3)
+                            // 모서리 가이드라인
+                            // 좌상단
+                            Path { p in
+                                p.move(to: CGPoint(x: 20, y: 36))
+                                p.addLine(to: CGPoint(x: 20, y: 20))
+                                p.addLine(to: CGPoint(x: 36, y: 20))
                             }
+                            .stroke(rotomBlue, lineWidth: 3)
+                            // 우상단
+                            Path { p in
+                                p.move(to: CGPoint(x: size - 36, y: 20))
+                                p.addLine(to: CGPoint(x: size - 20, y: 20))
+                                p.addLine(to: CGPoint(x: size - 20, y: 36))
+                            }
+                            .stroke(rotomBlue, lineWidth: 3)
+                            // 좌하단
+                            Path { p in
+                                p.move(to: CGPoint(x: 20, y: size - 36))
+                                p.addLine(to: CGPoint(x: 20, y: size - 20))
+                                p.addLine(to: CGPoint(x: 36, y: size - 20))
+                            }
+                            .stroke(rotomBlue, lineWidth: 3)
+                            // 우하단
+                            Path { p in
+                                p.move(to: CGPoint(x: size - 36, y: size - 20))
+                                p.addLine(to: CGPoint(x: size - 20, y: size - 20))
+                                p.addLine(to: CGPoint(x: size - 20, y: size - 36))
+                            }
+                            .stroke(rotomBlue, lineWidth: 3)
+                            
                         }
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
@@ -190,12 +189,7 @@ struct ScanView: View {
                         }
                     }
                     .onAppear {
-                        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-                            isBlinking = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                isBlinking = false
-                            }
-                        }
+                        scheduleNextBlink()
                     }
                     
                     HStack(spacing: 16) {
@@ -375,6 +369,18 @@ struct ScanView: View {
     func stopScanAnimation() {
         isScanning = false
         scanBarOffset = 0
+    }
+    
+    // 변경 - 재귀 함수로 랜덤 간격
+    func scheduleNextBlink() {
+        let interval = Double.random(in: 0.1...5.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+            isBlinking = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                isBlinking = false
+                scheduleNextBlink() // 깜빡인 후 다음 랜덤 타이머 예약
+            }
+        }
     }
     
     func predictPokemon() async {
