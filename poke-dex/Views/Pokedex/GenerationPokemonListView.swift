@@ -90,7 +90,8 @@ struct GenerationPokemonListView: View {
                     
                     Spacer()
                     
-                    Text("\(generation.name) 지방")
+                    Text("\(generation.name) 도감")
+                        .bold()
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)

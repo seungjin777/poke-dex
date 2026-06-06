@@ -91,7 +91,7 @@ struct TitleView: View {
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
                 
-                Text("AI 포켓몬 도감")
+                Text("스마트 포켓몬 도감")
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.85))
                     .padding(.top, 4)

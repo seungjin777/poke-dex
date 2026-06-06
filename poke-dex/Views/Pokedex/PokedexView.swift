@@ -94,6 +94,7 @@ struct PokedexView: View {
                         Spacer()
                         
                         Text("포켓몬 도감")
+                            .bold()
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
@@ -215,19 +216,55 @@ struct GenerationCardView: View {
     }
     
     var body: some View {
+        let generationMaps: [Int: String] = [
+            1: "관동", 2: "성도", 3: "호연",
+            4: "신오", 5: "하나", 6: "칼로스",
+            7: "알로라", 8: "가라르", 9: "팔데아"
+        ]
+        
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(red: 0.847, green: 0.928, blue: 0.999))
             
+            // 우하단 흰색 삼각형 + 지도 이미지 워터마크
+            GeometryReader { geo in
+                ZStack {
+                    // 지도 이미지 (전체 카드에 투명하게)
+                    if let mapName = generationMaps[generation.id] {
+                        Image(mapName)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .offset(y: 25)  // 음수: 위로, 양수: 아래로
+                            .opacity(0.5)
+                            .clipped()
+                    }
+                    
+                    // 우하단 흰색 삼각형 (포켓몬 영역)
+                    Path { path in
+                        path.move(to: CGPoint(x: geo.size.width * 0.9, y: 0))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: 0))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height))
+                        path.addLine(to: CGPoint(x: geo.size.width * 0.85 - geo.size.height, y: geo.size.height))
+                        path.closeSubpath()
+                    }
+                    .fill(.white.opacity(0.7))
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(generation.name) 지방")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color(red: 0.076, green: 0.557, blue: 0.999))
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.8), radius: 1, x: 2, y: 2)
                     Text("\(generation.range.count)마리")
-                        .font(.subheadline)
-                        .foregroundStyle(Color(red: 0.546, green: 0.788, blue: 1))
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.8), radius: 1, x: 2, y: 2)
                 }
                 .padding(.leading, 16)
                 
@@ -240,11 +277,11 @@ struct GenerationCardView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 70, height: 70)
-                            .offset(x: CGFloat(index - 1) * 45)
-                            .zIndex(Double(index))
+                            .offset(x: CGFloat(index - 1) * 40)
+                            .zIndex(index == 1 ? 2 : index == 0 ? 0 : 1)
                     }
                 }
-                .frame(width: 70 + 44 * 2)
+                .frame(width: 70 + 29 * 2)
                 .padding(.trailing, 8)
             }
             .padding(.vertical, 12)
