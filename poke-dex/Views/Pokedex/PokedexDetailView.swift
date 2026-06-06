@@ -46,7 +46,7 @@ struct PokedexDetailView: View {
                             Label("3D로 보기", systemImage: "cube")
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
-                                .background(.blue)
+                                .background(.gray)
                                 .foregroundStyle(.white)
                                 .clipShape(Capsule())
                         }
@@ -57,7 +57,7 @@ struct PokedexDetailView: View {
                             Label("울음소리", systemImage: "speaker.wave.2.fill")
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
-                                .background(.orange)
+                                .background(.gray)
                                 .foregroundStyle(.white)
                                 .clipShape(Capsule())
                         }
@@ -69,17 +69,10 @@ struct PokedexDetailView: View {
                         .foregroundStyle(.gray)
                         .font(.subheadline)
                     
-                    // 타입 뱃지 - 타입별 고유 색상 적용
+                    // 타입 뱃지 - 아이콘 + 타입명 + 고유 색상
                     HStack {
                         ForEach(pokemon.types, id: \.self) { type in
-                            Text(type)
-                                .font(.subheadline)
-                                .bold()
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                                .background(typeColors[type] ?? .gray)
-                                .clipShape(Capsule())
+                            TypeBadgeView(typeName: type)
                         }
                     }
                     .padding(.vertical, 8)
@@ -150,6 +143,7 @@ struct PokedexDetailView: View {
                         }
                     }
                     .padding(.horizontal)
+                    .padding(.top, 16)
                     
                     Divider().padding(.top)
                     
@@ -178,6 +172,7 @@ struct PokedexDetailView: View {
                         }
                     }
                     .padding(.horizontal)
+                    .padding(.top, 8)
                     
                     Divider().padding(.top)
                     
@@ -284,7 +279,7 @@ struct PokedexDetailView: View {
         
         let voices = AVSpeechSynthesisVoice.speechVoices()
         utterance.voice = voices.first { $0.name == "Yuna (Premium)" }
-            ?? voices.first { $0.name.contains("Yuna")}
+            ?? voices.first { $0.name.contains("Yuna") }
             ?? AVSpeechSynthesisVoice(language: "ko-KR")
         
         utterance.rate = 0.55
