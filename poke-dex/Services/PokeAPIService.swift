@@ -123,28 +123,27 @@ let statTranslations: [String: String] = [
     "special-attack": "특수공격", "special-defense": "특수방어", "speed": "스피드"
 ]
 
-// 포켓몬 타입별 고유 색상 (영문 타입명 기준)
+// 포켓몬 타입별 고유 색상 (한국어 타입명 기준)
 let typeColors: [String: Color] = [
-    "normal":   Color(red: 0.600, green: 0.600, blue: 0.600),
-    "fire":     Color(red: 1.000, green: 0.381, blue: 0.172),
-    "water":    Color(red: 0.161, green: 0.573, blue: 1.000),
-    "grass":    Color(red: 0.259, green: 0.749, blue: 0.141),
-    "electric": Color(red: 1.000, green: 0.859, blue: 0.002),
-    "ice":      Color(red: 0.259, green: 0.847, blue: 1.000),
-    "fighting": Color(red: 1.000, green: 0.635, blue: 0.007),
-    "poison":   Color(red: 0.600, green: 0.302, blue: 0.812),
-    "ground":   Color(red: 0.670, green: 0.474, blue: 0.224),
-    "flying":   Color(red: 0.584, green: 0.788, blue: 1.000),
-    "psychic":  Color(red: 1.000, green: 0.388, blue: 0.498),
-    "bug":      Color(red: 0.623, green: 0.643, blue: 0.141),
-    "rock":     Color(red: 0.737, green: 0.721, blue: 0.538),
-    "ghost":    Color(red: 0.431, green: 0.271, blue: 0.439),
-    "dragon":   Color(red: 0.329, green: 0.384, blue: 0.839),
-    "dark":     Color(red: 0.310, green: 0.278, blue: 0.278),
-    "steel":    Color(red: 0.416, green: 0.682, blue: 0.827),
-    "fairy":    Color(red: 1.000, green: 0.694, blue: 1.000)
+    "노말":   Color(red: 0.600, green: 0.600, blue: 0.600),
+    "불꽃":   Color(red: 1.000, green: 0.381, blue: 0.172),
+    "물":     Color(red: 0.161, green: 0.573, blue: 1.000),
+    "풀":     Color(red: 0.259, green: 0.749, blue: 0.141),
+    "전기":   Color(red: 1.000, green: 0.859, blue: 0.002),
+    "얼음":   Color(red: 0.259, green: 0.847, blue: 1.000),
+    "격투":   Color(red: 1.000, green: 0.635, blue: 0.007),
+    "독":     Color(red: 0.600, green: 0.302, blue: 0.812),
+    "땅":     Color(red: 0.670, green: 0.474, blue: 0.224),
+    "비행":   Color(red: 0.584, green: 0.788, blue: 1.000),
+    "에스퍼": Color(red: 1.000, green: 0.388, blue: 0.498),
+    "벌레":   Color(red: 0.623, green: 0.643, blue: 0.141),
+    "바위":   Color(red: 0.737, green: 0.721, blue: 0.538),
+    "고스트": Color(red: 0.431, green: 0.271, blue: 0.439),
+    "드래곤": Color(red: 0.329, green: 0.384, blue: 0.839),
+    "악":     Color(red: 0.310, green: 0.278, blue: 0.278),
+    "강철":   Color(red: 0.416, green: 0.682, blue: 0.827),
+    "페어리": Color(red: 1.000, green: 0.694, blue: 1.000)
 ]
-
 class PokeAPIService {
     
     static let shared = PokeAPIService()
