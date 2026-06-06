@@ -44,6 +44,7 @@ struct ScanView: View {
     @State private var cameraDelegate: CameraDelegate?
     @State private var currentZoom: CGFloat = 1.0
     @State private var lastZoom: CGFloat = 1.0
+    @State private var isCameraLoading = false
     
     // 스캔바 애니메이션
     @State private var isScanning = false
@@ -210,6 +211,7 @@ struct ScanView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .shadow(color: .black.opacity(0.6), radius: 5, y: 7)
                         }
+                        .disabled(isCameraLoading)  // 추가
                         
                         // 앨범/취소 버튼
                         Button {
@@ -266,7 +268,11 @@ struct ScanView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(.clear, for: .navigationBar)
-            .sheet(isPresented: $isShowingPhotoLibrary) {
+            .sheet(isPresented: $isShowingPhotoLibrary, onDismiss: {
+                if let image = selectedImage {
+                    selectedImage = cropToSquare(image)
+                }
+            }) {
                 ImagePicker(selectedImage: $selectedImage, sourceType: .photoLibrary)
             }
             .navigationDestination(isPresented: $isShowingResult) {
@@ -289,6 +295,19 @@ struct ScanView: View {
     func startCamera() {
         Task {
             guard await AVCaptureDevice.requestAccess(for: .video) else { return }
+                    
+            captureSession = AVCaptureSession()
+            photoOutput = AVCapturePhotoOutput()
+            
+            // 백그라운드에서 이전 세션 완전히 종료 후 새 세션 시작
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .background).async {
+                    if captureSession.isRunning {
+                        captureSession.stopRunning()
+                    }
+                    continuation.resume()
+                }
+            }
             
             captureSession = AVCaptureSession()
             photoOutput = AVCapturePhotoOutput()
@@ -349,13 +368,32 @@ struct ScanView: View {
     func capturePhoto() {
         let delegate = CameraDelegate { image in
             DispatchQueue.main.async {
-                selectedImage = image
+                // 캡처 후 정사각형으로 크롭
+                selectedImage = cropToSquare(image)
                 stopCamera()
             }
         }
         cameraDelegate = delegate
         let settings = AVCapturePhotoSettings()
         photoOutput.capturePhoto(with: settings, delegate: delegate)
+    }
+    
+    func cropToSquare(_ image: UIImage) -> UIImage {
+        // orientation 정규화 먼저
+        UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+        image.draw(in: CGRect(origin: .zero, size: image.size))
+        let normalized = UIGraphicsGetImageFromCurrentImageContext() ?? image
+        UIGraphicsEndImageContext()
+        
+        // 정규화된 이미지 기준으로 중앙 크롭
+        let size = min(normalized.size.width, normalized.size.height)
+        let origin = CGPoint(
+            x: (normalized.size.width - size) / 2,
+            y: (normalized.size.height - size) / 2
+        )
+        let cropRect = CGRect(origin: origin, size: CGSize(width: size, height: size))
+        guard let cgImage = normalized.cgImage?.cropping(to: cropRect) else { return image }
+        return UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
     }
     
     func startScanAnimation() {

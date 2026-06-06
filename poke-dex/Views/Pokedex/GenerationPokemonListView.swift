@@ -198,8 +198,8 @@ struct GenerationPokemonListView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                     .overlay {
                         if !searchText.isEmpty && filteredPokemons.isEmpty {
                             VStack(spacing: 12) {
@@ -217,6 +217,7 @@ struct GenerationPokemonListView: View {
                             blinkLamp()
                         }
                     )
+                    .scrollContentBackground(.hidden)
                 }
             }
         }
