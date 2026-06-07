@@ -159,30 +159,40 @@ struct PokemonModelView: View {
                 VStack {
                     if hasGenderDifferences {
                         HStack(spacing: 12) {
+                            // 수컷 버튼 — systemImage 제거하고 텍스트로
                             Button {
                                 selectedGender = .male
                                 modelURL = nil
+                                arModelURL = nil
                                 Task { await loadModel() }
                             } label: {
-                                Label("수컷", systemImage: "♂")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(selectedGender == .male ? .blue : .gray.opacity(0.3))
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
+                                HStack(spacing: 6) {
+                                    Text("♂").bold()
+                                    Text("수컷")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(selectedGender == .male ? .blue : .gray.opacity(0.3))
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
                             }
-                            
+
+                            // 암컷 버튼
                             Button {
                                 selectedGender = .female
                                 modelURL = nil
+                                arModelURL = nil
                                 Task { await loadModel() }
                             } label: {
-                                Label("암컷", systemImage: "♀")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(selectedGender == .female ? .pink : .gray.opacity(0.3))
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
+                                HStack(spacing: 6) {
+                                    Text("♀").bold()
+                                    Text("암컷")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(selectedGender == .female ? .pink : .gray.opacity(0.3))
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
                             }
                         }
                         .padding(.top)
@@ -215,7 +225,6 @@ struct PokemonModelView: View {
     }
     
     func loadModel() async {
-        // isLoading 중일 때만 막음 — modelURL은 재시도 시 nil로 리셋하므로 체크 불필요
         guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
@@ -223,6 +232,11 @@ struct PokemonModelView: View {
             let gender = hasGenderDifferences ? selectedGender : .none
             let url = try await ModelService.shared.getModelURL(for: pokemonId, gender: gender, type: .view3D)
             modelURL = url
+            
+            // AR 모드 상태에서 성별 바꿨을 때 AR 모델도 자동 로드
+            if showAR {
+                await loadARModel()
+            }
         } catch {
             print("모델 로드 에러: \(error)")
             errorMessage = "3D 모델을 불러올 수 없어요\n서버 연결을 확인해주세요"
