@@ -3,25 +3,19 @@ import SceneKit
 import RealityKit
 import ARKit
 
-// SceneKit 기반 3D 뷰어 (회전/확대/이동 내장)
 struct Pokemon3DView: UIViewRepresentable {
     
     let modelURL: URL
     
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView(frame: .zero)
-        
-        // 기본 제스처 활성화 (회전, 확대, 이동)
         scnView.allowsCameraControl = true
-        scnView.autoenablesDefaultLighting = true  // 자동 조명 (텍스처 깨짐 해결)
+        scnView.autoenablesDefaultLighting = true
         scnView.backgroundColor = UIColor.systemBackground
         scnView.antialiasingMode = .multisampling4X
         
-        // usdzs 로드
         if let scene = try? SCNScene(url: modelURL) {
             scnView.scene = scene
-            
-            // 카메라 설정
             let cameraNode = SCNNode()
             cameraNode.camera = SCNCamera()
             cameraNode.position = SCNVector3(0, 0, 3)
@@ -43,7 +37,7 @@ struct PokemonARViewContainer: UIViewRepresentable {
         
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal]
-        config.environmentTexturing = .automatic  // 추가
+        config.environmentTexturing = .automatic
         arView.session.run(config)
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
@@ -73,11 +67,8 @@ struct PokemonARViewContainer: UIViewRepresentable {
             if let result = results.first {
                 Task {
                     do {
-                        // ModelEntity.load 대신 loadAsync 사용
                         let entity = try await ModelEntity(contentsOf: modelURL)
                         entity.scale = SIMD3<Float>(0.3, 0.3, 0.3)
-                        
-                        // 텍스처 강제 적용
                         entity.model?.materials = entity.model?.materials ?? []
                         
                         let anchor = AnchorEntity(raycastResult: result)
@@ -101,8 +92,8 @@ struct PokemonModelView: View {
     let pokemonName: String
     let hasGenderDifferences: Bool
     
-    @State private var modelURL: URL?      // 3D용
-    @State private var arModelURL: URL?    // AR용
+    @State private var modelURL: URL?
+    @State private var arModelURL: URL?
     
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -127,13 +118,28 @@ struct PokemonModelView: View {
                         .foregroundStyle(.secondary)
                 }
             } else if let error = errorMessage {
-                VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                // 에러 상태: 메시지 + 재시도 버튼
+                VStack(spacing: 20) {
+                    Image(systemName: "wifi.exclamationmark")
                         .font(.system(size: 50))
                         .foregroundStyle(.orange)
                     Text(error)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                    
+                    Button {
+                        // 재시도: 상태 초기화 후 다시 로드
+                        errorMessage = nil
+                        modelURL = nil
+                        Task { await loadModel() }
+                    } label: {
+                        Label("다시 시도", systemImage: "arrow.clockwise")
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
                 }
                 .padding()
             } else if let url = modelURL {
@@ -142,7 +148,6 @@ struct PokemonModelView: View {
                         PokemonARViewContainer(modelURL: arUrl)
                             .ignoresSafeArea()
                     } else {
-                        // AR 모델 로딩 중
                         ProgressView("AR 모델 로딩 중...")
                     }
                 } else {
@@ -150,13 +155,13 @@ struct PokemonModelView: View {
                 }
             }
             
-            if !isLoading {
+            if !isLoading && errorMessage == nil {
                 VStack {
-                    // 성별 선택 (성별 차이 있는 포켓몬만)
                     if hasGenderDifferences {
                         HStack(spacing: 12) {
                             Button {
                                 selectedGender = .male
+                                modelURL = nil
                                 Task { await loadModel() }
                             } label: {
                                 Label("수컷", systemImage: "♂")
@@ -169,6 +174,7 @@ struct PokemonModelView: View {
                             
                             Button {
                                 selectedGender = .female
+                                modelURL = nil
                                 Task { await loadModel() }
                             } label: {
                                 Label("암컷", systemImage: "♀")
@@ -184,7 +190,6 @@ struct PokemonModelView: View {
                     
                     Spacer()
                     
-                    // 3D/AR 전환 버튼
                     Button {
                         showAR.toggle()
                         if showAR && arModelURL == nil {
@@ -205,20 +210,17 @@ struct PokemonModelView: View {
         .navigationTitle("\(pokemonName) 3D")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            Task {
-                await loadModel()
-            }
+            Task { await loadModel() }
         }
     }
     
-    // PokemonModelView에서 loadModel 수정
     func loadModel() async {
-        guard modelURL == nil && !isLoading else { return }
+        // isLoading 중일 때만 막음 — modelURL은 재시도 시 nil로 리셋하므로 체크 불필요
+        guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
         do {
             let gender = hasGenderDifferences ? selectedGender : .none
-            // 3D용 모델 로드
             let url = try await ModelService.shared.getModelURL(for: pokemonId, gender: gender, type: .view3D)
             modelURL = url
         } catch {

@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 
-// 인라인 카메라 프리뷰 UIViewRepresentable
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
     
@@ -37,7 +36,9 @@ struct ScanView: View {
     @State private var isShowingResult = false
     @State private var isShowingFailure = false
     
-    // 카메라 관련
+    @State private var scanErrorMessage: String?
+    @State private var isShowingScanError = false
+    
     @State private var isCameraActive = false
     @State private var captureSession = AVCaptureSession()
     @State private var photoOutput = AVCapturePhotoOutput()
@@ -46,20 +47,17 @@ struct ScanView: View {
     @State private var lastZoom: CGFloat = 1.0
     @State private var isCameraLoading = false
     
-    // 스캔바 애니메이션
     @State private var isScanning = false
     @State private var scanBarOffset: CGFloat = 0
+    @State private var scanAreaSize: CGFloat = 0  // GeometryReader에서 측정한 실제 이미지 영역 크기
     
-    //로토무
     @State private var isBlinking = false
     
-    // 파란 포인트 컬러
     let rotomBlue = Color(red: 0.29, green: 0.56, blue: 0.85)
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // 주황 배경
                 LinearGradient(
                     colors: [Color(red: 0.96, green: 0.53, blue: 0.29),
                              Color(red: 0.91, green: 0.40, blue: 0.10),
@@ -71,7 +69,6 @@ struct ScanView: View {
                 
                 VStack(spacing: 24) {
                     
-                    // 이미지 영역
                     GeometryReader { geo in
                         let size = geo.size.width
                         
@@ -122,41 +119,30 @@ struct ScanView: View {
                                     }
                             }
                             
-                            // 모서리 가이드라인
-                            // 좌상단
                             Path { p in
                                 p.move(to: CGPoint(x: 20, y: 36))
                                 p.addLine(to: CGPoint(x: 20, y: 20))
                                 p.addLine(to: CGPoint(x: 36, y: 20))
-                            }
-                            .stroke(rotomBlue, lineWidth: 3)
-                            // 우상단
+                            }.stroke(rotomBlue, lineWidth: 3)
                             Path { p in
                                 p.move(to: CGPoint(x: size - 36, y: 20))
                                 p.addLine(to: CGPoint(x: size - 20, y: 20))
                                 p.addLine(to: CGPoint(x: size - 20, y: 36))
-                            }
-                            .stroke(rotomBlue, lineWidth: 3)
-                            // 좌하단
+                            }.stroke(rotomBlue, lineWidth: 3)
                             Path { p in
                                 p.move(to: CGPoint(x: 20, y: size - 36))
                                 p.addLine(to: CGPoint(x: 20, y: size - 20))
                                 p.addLine(to: CGPoint(x: 36, y: size - 20))
-                            }
-                            .stroke(rotomBlue, lineWidth: 3)
-                            // 우하단
+                            }.stroke(rotomBlue, lineWidth: 3)
                             Path { p in
                                 p.move(to: CGPoint(x: size - 36, y: size - 20))
                                 p.addLine(to: CGPoint(x: size - 20, y: size - 20))
                                 p.addLine(to: CGPoint(x: size - 20, y: size - 36))
-                            }
-                            .stroke(rotomBlue, lineWidth: 3)
-                            
+                            }.stroke(rotomBlue, lineWidth: 3)
                         }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(rotomBlue, lineWidth: 2.5)
-                        )
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(rotomBlue, lineWidth: 2.5))
+                        .onAppear { scanAreaSize = geo.size.width }
+                        .onChange(of: geo.size) { _, newSize in scanAreaSize = newSize.width }
                     }
                     .aspectRatio(1, contentMode: .fit)
                     .padding(.horizontal)
@@ -177,10 +163,9 @@ struct ScanView: View {
                                 .animation(.easeInOut(duration: 0.08), value: isBlinking)
                         }
                         .padding(.horizontal)
-                        .offset(y: -50) // 눈 높이의 절반만큼 위로 올려서 테두리에 걸치게
+                        .offset(y: -50)
                     }
                     .overlay(alignment: .center) {
-                        // 입 - 사진 없을 때만 표시
                         if selectedImage == nil && !isCameraActive {
                             Image("rotom_mouth")
                                 .resizable()
@@ -194,7 +179,6 @@ struct ScanView: View {
                     }
                     
                     HStack(spacing: 16) {
-                        // 카메라/촬영 버튼
                         Button {
                             if isCameraActive {
                                 capturePhoto()
@@ -211,9 +195,8 @@ struct ScanView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .shadow(color: .black.opacity(0.6), radius: 5, y: 7)
                         }
-                        .disabled(isCameraLoading)  // 추가
+                        .disabled(isCameraLoading)
                         
-                        // 앨범/취소 버튼
                         Button {
                             if isCameraActive {
                                 stopCamera()
@@ -232,7 +215,6 @@ struct ScanView: View {
                     }
                     .padding(.horizontal)
                     
-                    // 판별하기 버튼 (카메라 활성화 중엔 숨김)
                     if !isCameraActive {
                         Button {
                             Task { await predictPokemon() }
@@ -286,6 +268,14 @@ struct ScanView: View {
                     selectedImage = nil
                 })
             }
+            .alert("서버 연결 실패", isPresented: $isShowingScanError) {
+                Button("다시 시도") {
+                    Task { await predictPokemon() }
+                }
+                Button("취소", role: .cancel) {}
+            } message: {
+                Text(scanErrorMessage ?? "서버에 연결할 수 없어요.\nAI 서버가 켜져 있는지 확인해주세요.")
+            }
             .onDisappear {
                 stopCamera()
             }
@@ -299,7 +289,6 @@ struct ScanView: View {
             captureSession = AVCaptureSession()
             photoOutput = AVCapturePhotoOutput()
             
-            // 백그라운드에서 이전 세션 완전히 종료 후 새 세션 시작
             await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .background).async {
                     if captureSession.isRunning {
@@ -368,7 +357,6 @@ struct ScanView: View {
     func capturePhoto() {
         let delegate = CameraDelegate { image in
             DispatchQueue.main.async {
-                // 캡처 후 정사각형으로 크롭
                 selectedImage = cropToSquare(image)
                 stopCamera()
             }
@@ -379,13 +367,11 @@ struct ScanView: View {
     }
     
     func cropToSquare(_ image: UIImage) -> UIImage {
-        // orientation 정규화 먼저
         UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
         image.draw(in: CGRect(origin: .zero, size: image.size))
         let normalized = UIGraphicsGetImageFromCurrentImageContext() ?? image
         UIGraphicsEndImageContext()
         
-        // 정규화된 이미지 기준으로 중앙 크롭
         let size = min(normalized.size.width, normalized.size.height)
         let origin = CGPoint(
             x: (normalized.size.width - size) / 2,
@@ -400,7 +386,7 @@ struct ScanView: View {
         isScanning = true
         scanBarOffset = 0
         withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: true)) {
-            scanBarOffset = 290
+            scanBarOffset = scanAreaSize - 6
         }
     }
     
@@ -409,14 +395,13 @@ struct ScanView: View {
         scanBarOffset = 0
     }
     
-    // 변경 - 재귀 함수로 랜덤 간격
     func scheduleNextBlink() {
         let interval = Double.random(in: 0.1...5.0)
         DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
             isBlinking = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 isBlinking = false
-                scheduleNextBlink() // 깜빡인 후 다음 랜덤 타이머 예약
+                scheduleNextBlink()
             }
         }
     }
@@ -427,17 +412,23 @@ struct ScanView: View {
         startScanAnimation()
         
         do {
-            let result = try await PokeDexAPIService.shared.predictPokemon(image: image)
-            predictionResult = result
+            // 서버 요청과 최소 대기(1.5초 = 스캔바 1회 왕복)를 병렬 실행
+            // 둘 다 끝나야 다음으로 넘어감
+            async let result = PokeDexAPIService.shared.predictPokemon(image: image)
+            async let minimumDelay: Void = Task.sleep(nanoseconds: 3_000_000_000)
+            
+            let (prediction, _) = try await (result, minimumDelay)
+            
+            predictionResult = prediction
             stopScanAnimation()
             
-            if result.result == "success" {
+            if prediction.result == "success" {
                 if let imageData = image.jpegData(compressionQuality: 0.8) {
-                    let species = try await PokeAPIService.shared.fetchPokemonSpecies(id: result.number)
+                    let species = try await PokeAPIService.shared.fetchPokemonSpecies(id: prediction.number)
                     let history = ScanHistory(
-                        pokemonNumber: result.number,
+                        pokemonNumber: prediction.number,
                         pokemonName: species.name,
-                        confidence: result.confidence,
+                        confidence: prediction.confidence,
                         imageData: imageData
                     )
                     modelContext.insert(history)
@@ -449,6 +440,16 @@ struct ScanView: View {
         } catch {
             stopScanAnimation()
             print("판별 실패: \(error)")
+            
+            let urlError = error as? URLError
+            if urlError?.code == .timedOut {
+                scanErrorMessage = "서버 응답 시간이 초과됐어요.\nAI 서버가 켜져 있는지 확인해주세요."
+            } else if urlError?.code == .cannotConnectToHost || urlError?.code == .networkConnectionLost {
+                scanErrorMessage = "서버에 연결할 수 없어요.\nAI 서버가 켜져 있는지 확인해주세요."
+            } else {
+                scanErrorMessage = "알 수 없는 오류가 발생했어요.\n잠시 후 다시 시도해주세요."
+            }
+            isShowingScanError = true
         }
         isLoading = false
     }

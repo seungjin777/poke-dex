@@ -1,14 +1,6 @@
-//
-//  PokeDexAPIService.swift
-//  poke-dex
-//
-//  Created by 승진 on 5/20/26.
-//
-
 import Foundation
 import UIKit
 
-// FastAPI 서버 응답 구조
 struct PredictionResponse: Codable {
     let number: Int
     let confidence: Double
@@ -20,23 +12,27 @@ class PokeDexAPIService {
     static let shared = PokeDexAPIService()
     private let baseURL = AppConfig.serverBaseURL
     
-    // 이미지 전송 후 판별 결과 받기
+    // 서버가 꺼져 있을 때 무한 대기를 막기 위해 짧은 타임아웃 설정
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10   // 10초 내 응답 없으면 실패
+        config.timeoutIntervalForResource = 30  // 전체 업로드/다운로드 30초 제한
+        return URLSession(configuration: config)
+    }()
+    
     func predictPokemon(image: UIImage) async throws -> PredictionResponse {
         let url = URL(string: "\(baseURL)/pokemon/predictions")!
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         
-        // multipart/form-data 형식으로 이미지 전송
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
-        // 이미지를 JPEG로 변환
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw URLError(.badServerResponse)
         }
         
-        // multipart body 구성
         var body = Data()
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"pokemon.jpg\"\r\n".data(using: .utf8)!)
@@ -46,7 +42,8 @@ class PokeDexAPIService {
         
         request.httpBody = body
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        // URLSession.shared 대신 타임아웃이 설정된 session 사용
+        let (data, _) = try await session.data(for: request)
         return try JSONDecoder().decode(PredictionResponse.self, from: data)
     }
 }

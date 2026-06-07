@@ -6,7 +6,6 @@ enum PokemonGender {
     case none
 }
 
-// 3D 뷰어용인지 AR용인지 구분
 enum ModelType {
     case view3D
     case ar
@@ -18,6 +17,14 @@ class ModelService {
     
     private let baseURL = AppConfig.serverBaseURL
     
+    // 서버가 꺼져 있을 때 무한 대기를 막기 위해 짧은 타임아웃 설정
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10   // 요청 시작 후 10초 내 응답 없으면 실패
+        config.timeoutIntervalForResource = 30  // 전체 다운로드 30초 제한
+        return URLSession(configuration: config)
+    }()
+    
     func getModelURL(for pokemonId: Int, gender: PokemonGender = .none, type: ModelType) async throws -> URL {
         return try await downloadModel(pokemonId: pokemonId, gender: gender, type: type)
     }
@@ -25,17 +32,17 @@ class ModelService {
     private func downloadModel(pokemonId: Int, gender: PokemonGender, type: ModelType) async throws -> URL {
         let fileName: String
         switch gender {
-        case .male: fileName = "\(pokemonId)-M"
+        case .male:   fileName = "\(pokemonId)-M"
         case .female: fileName = "\(pokemonId)-F"
-        case .none: fileName = "\(pokemonId)"
+        case .none:   fileName = "\(pokemonId)"
         }
         
-        // 3D/AR 엔드포인트 분리
         let endpoint = type == .ar ? "modelAR" : "model3D"
         let url = URL(string: "\(baseURL)/pokemon/\(endpoint)/\(fileName)")!
         
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            // URLSession.shared 대신 타임아웃이 설정된 session 사용
+            let (data, response) = try await session.data(from: url)
             
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 404 {
                 if gender != .none {
@@ -46,7 +53,6 @@ class ModelService {
                 }
             }
             
-            // 임시 디렉토리에 저장
             let temp = FileManager.default.temporaryDirectory
                 .appendingPathComponent("\(type == .ar ? "ar" : "3d")_\(fileName).usdz")
             try data.write(to: temp)
